@@ -75,8 +75,11 @@ namespace AzureDataSender_FEZ
 
             caCerts = new X509Certificate[] { new X509Certificate(caStackExcange), new X509Certificate(caAzure) };
 
-            wiFi_SPWF04S_Device = new WiFi_SPWF04S_Device(wifi, NetworkInterface.ActiveNetworkInterface, caCerts, wiFiSSID_1, wiFiKey_1);
-            //wiFi_SPWF04S_Device = new WiFi_SPWF04S_Device(wifi, NetworkInterface.ActiveNetworkInterface, caCerts, wiFiSSID_2, wiFiKey_2);
+
+
+
+            //wiFi_SPWF04S_Device = new WiFi_SPWF04S_Device(wifi, NetworkInterface.ActiveNetworkInterface, caCerts, wiFiSSID_1, wiFiKey_1);
+            wiFi_SPWF04S_Device = new WiFi_SPWF04S_Device(wifi, NetworkInterface.ActiveNetworkInterface, caCerts, wiFiSSID_2, wiFiKey_2);
 
             wiFi_SPWF04S_Device.Initialize();
 
@@ -545,8 +548,6 @@ namespace AzureDataSender_FEZ
         }
         #endregion
     }
-
-
 }
 
 

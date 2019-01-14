@@ -44,6 +44,12 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="RoSchmi\Net\WiFi_SPWF04S_Device.cs" />
+    <Compile Include="SPWF04SX_Driver\Helpers.cs" />
+    <Compile Include="SPWF04SX_Driver\SPWF04SxCommand.cs" />
+    <Compile Include="SPWF04SX_Driver\SPWF04SxEnums.cs" />
+    <Compile Include="SPWF04SX_Driver\SPWF04SxEvents.cs" />
+    <Compile Include="SPWF04SX_Driver\SPWF04SxExceptions.cs" />
+    <Compile Include="SPWF04SX_Driver\SPWF04SxInterface.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -62,9 +68,6 @@
     </Reference>
     <Reference Include="GHIElectronics.TinyCLR.Devices.Spi, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\GHIElectronics.TinyCLR.Devices.Spi.1.0.0\lib\net452\GHIElectronics.TinyCLR.Devices.Spi.dll</HintPath>
-    </Reference>
-    <Reference Include="GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx.1.0.0\lib\net452\GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx.dll</HintPath>
     </Reference>
     <Reference Include="GHIElectronics.TinyCLR.Native, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\GHIElectronics.TinyCLR.Native.1.0.0\lib\net452\GHIElectronics.TinyCLR.Native.dll</HintPath>
