@@ -20,6 +20,8 @@ namespace AzureDataSender_FEZ
 {
     class Program
     {
+        private static readonly object LockProgram = new object();
+
         private static GpioPin led1;
 
         private static GpioPin btn1;
@@ -28,15 +30,22 @@ namespace AzureDataSender_FEZ
 
         private static WiFi_SPWF04S_Device wiFi_SPWF04S_Device;
 
-        static byte[] caAzure = Resources.GetBytes(Resources.BinaryResources.DigiCert_Baltimore_Root);
+        private static DateTime dateTimeNtpServerDelivery = DateTime.MinValue;
+        private static TimeSpan timeDeltaNTPServerDelivery = new TimeSpan(0);
+        private static bool dateTimeAndIpAddressAreSet = false;
+
+        private static IPAddress ip4Address = IPAddress.Parse("0.0.0.0");
+
+
+        static byte[] caAzure =  Resources.GetBytes(Resources.BinaryResources.DigiCert_Baltimore_Root);
 
         static byte[] caStackExcange = (Resources.GetBytes(Resources.BinaryResources.Digicert___StackExchange));
 
-        static string wiFiSSID_1 = Resources.GetString(Resources.StringResources.SSID_1);
-        static string wiFiKey_1 = Resources.GetString(Resources.StringResources.Key_1);
+        static string wiFiSSID_1 = ResourcesSecret.GetString(ResourcesSecret.StringResources.SSID_1);
+        static string wiFiKey_1 = ResourcesSecret.GetString(ResourcesSecret.StringResources.Key_1);
 
-        static string wiFiSSID_2 = Resources.GetString(Resources.StringResources.SSID_2);
-        static string wiFiKey_2 = Resources.GetString(Resources.StringResources.Key_2);
+        static string wiFiSSID_2 = ResourcesSecret.GetString(ResourcesSecret.StringResources.SSID_2);
+        static string wiFiKey_2 = ResourcesSecret.GetString(ResourcesSecret.StringResources.Key_2);
 
         private static X509Certificate[] caCerts;
 
@@ -81,32 +90,70 @@ namespace AzureDataSender_FEZ
             //wiFi_SPWF04S_Device = new WiFi_SPWF04S_Device(wifi, NetworkInterface.ActiveNetworkInterface, caCerts, wiFiSSID_1, wiFiKey_1);
             wiFi_SPWF04S_Device = new WiFi_SPWF04S_Device(wifi, NetworkInterface.ActiveNetworkInterface, caCerts, wiFiSSID_2, wiFiKey_2);
 
+            wiFi_SPWF04S_Device.Ip4AddressAssigned += WiFi_SPWF04S_Device_Ip4AddressAssigned;
+
+            wiFi_SPWF04S_Device.DateTimeNtpServerDelivered += WiFi_SPWF04S_Device_DateTimeNtpServerDelivered;
+
+
+
             wiFi_SPWF04S_Device.Initialize();
 
-            while(true)
+            while (true)
             {
                 Thread.Sleep(1000);
-                if (wiFi_SPWF04S_Device.WiFiIPAddress != null)
+                IPAddress assignedIP = null;
+                lock (LockProgram)
                 {
-                    Debug.WriteLine("IPAddress is: " + wiFi_SPWF04S_Device.WiFiIPAddress.ToString());
+                    assignedIP = ip4Address;
+                }
+
+                if (assignedIP != null)
+                {
+                    Debug.WriteLine("IPAddress is: " + assignedIP.ToString());
                 }
                 else
                 {
                     Debug.WriteLine("IPAddress is: null");
                 }
 
+                DateTime deliveredDateTime = DateTime.MinValue;
+                lock (LockProgram)
+                {
+                    deliveredDateTime = dateTimeNtpServerDelivery;
+                }
+                Debug.WriteLine(deliveredDateTime == DateTime.MinValue ? "Yet no DateTime delivered" : "DateTime is: " + deliveredDateTime.ToString());
+
+
+
+
+                //wifi.IndicationReceived += (s, e) => Debug.WriteLine($"WIND: {Program.WindToName(e.Indication)} {e.Message}");
+                //wifi.ErrorReceived += (s, e) => Debug.WriteLine($"ERROR: {e.Error} {e.Message}");
+                //wifi.TurnOn();
+                //NetworkInterface.ActiveNetworkInterface = wifi;
+                //Run();
             }
-
-            
-            
-
-
-            //wifi.IndicationReceived += (s, e) => Debug.WriteLine($"WIND: {Program.WindToName(e.Indication)} {e.Message}");
-            //wifi.ErrorReceived += (s, e) => Debug.WriteLine($"ERROR: {e.Error} {e.Message}");
-            //wifi.TurnOn();
-            //NetworkInterface.ActiveNetworkInterface = wifi;
-            //Run();
         }
+
+        private static void WiFi_SPWF04S_Device_Ip4AddressAssigned(WiFi_SPWF04S_Device sender, WiFi_SPWF04S_Device.Ip4AssignedEventArgs e)
+        {
+            lock (LockProgram)
+            {
+                ip4Address = e.Ip4Address;
+            }
+        }
+
+        private static void WiFi_SPWF04S_Device_DateTimeNtpServerDelivered(WiFi_SPWF04S_Device sender, WiFi_SPWF04S_Device.NTPServerDeliveryEventArgs e)
+        {
+            lock (LockProgram)
+            {
+                dateTimeNtpServerDelivery = e.DateTimeNTPServer;
+                timeDeltaNTPServerDelivery = e.TimeDeltaNTPServer;
+
+                dateTimeAndIpAddressAreSet = true;
+            }
+        }
+
+
 
         /*
         private static void Run()

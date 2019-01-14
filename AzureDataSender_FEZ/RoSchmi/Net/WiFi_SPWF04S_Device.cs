@@ -22,10 +22,12 @@ namespace RoSchmi.Net
         private string wiFiKey;
 
         private IPAddress iPAddress = null;
+        private DateTime dateTimeNtpServerDelivery = DateTime.MinValue;
+        private TimeSpan timeDeltaNTPServerDelivery = new TimeSpan(0);
 
         private AutoResetEvent resetEventWiFiConnected;
 
-      
+
 
         public IPAddress WiFiIPAddress { get { return iPAddress; } }
 
@@ -36,38 +38,38 @@ namespace RoSchmi.Net
             networkInterface = pNetworkInterface;
             caCerts = pCaCerts;
             wiFiSSID = pWifiSSID;
-            wiFiKey = pWifiKey;                     
+            wiFiKey = pWifiKey;
         }
 
         public void Initialize()
         {
-            
+
             wiFiSPWF04S.IndicationReceived += WiFiSPWF04S_IndicationReceived;   //  (s, e) => { Debug.WriteLine($"WIND: {WindToName(e.Indication)} {e.Message}"); this.resetEventWiFiConnected.Set();};
-           
+
             wiFiSPWF04S.ErrorReceived += (s, e) => Debug.WriteLine($"ERROR: {e.Error} {e.Message}");
-            
+
             wiFiSPWF04S.TurnOn();
-            
+
             networkInterface = wiFiSPWF04S;
 
             Thread.Sleep(500);
-            
+
             Thread InitThread = new Thread(new ThreadStart(runInitThread));
             InitThread.Start();
-                  
+
         }
 
-        
+
         private void runInitThread()
         {
             SPWF04SxWiFiState theState = SPWF04SxWiFiState.ScanInProgress;
 
-            for (int i = 0; i < 100; i++)    // Try for maximal time of 50 sec
+            for (int i = 0; i < 60; i++)    // Try for maximal time of 30 sec
             {
                 try
                 {
                     theState = wiFiSPWF04S.State;
-                    Thread.Sleep(100);
+                    Thread.Sleep(20);
                     if (theState == SPWF04SxWiFiState.ReadyToTransmit)
                     {
                         Debug.WriteLine("TheState is: " + "(" + i * 500 + ") " + (int)theState + " " + StateToName(theState));
@@ -88,50 +90,169 @@ namespace RoSchmi.Net
                 catch (Exception ex)
                 {
                     Debug.WriteLine("Exception: " + "(" + i * 500 + ") " + ex.Message);
-                }               
+                }
                 Thread.Sleep(500);
             }
 
-            int timeOutMs = 10000;    // Wait for ipAddress for 10 sec
-            long startTicks = DateTime.UtcNow.Ticks;
-            long timeOutTicks = timeOutMs * TimeSpan.TicksPerMillisecond + startTicks;
-            while ((iPAddress == null) && (DateTime.UtcNow.Ticks < timeOutTicks))
+            try
             {
-                try
-                {
-                    wiFiSPWF04S.JoinNetwork(wiFiSSID, wiFiKey);
-                }
-                catch (Exception ex)
-                {
-                    var message = ex.Message;
-                }
-                Thread.Sleep(500);
+                wiFiSPWF04S.JoinNetwork(wiFiSSID, wiFiKey);
+                var dummy3 = 1;
+
             }
+            catch (Exception ex)
+            {
+                var message = ex.Message;
+            }
+
 
             wiFiSPWF04S.ClearTlsServerRootCertificate();
 
             var dummy4 = 1;
+
+            while (true)
+            {
+                Thread.Sleep(100);
+            }
         }
-        
+
 
         private void WiFiSPWF04S_IndicationReceived(SPWF04SxInterface sender, SPWF04SxIndicationReceivedEventArgs e)
         {
             Debug.WriteLine($"WIND: {WindToName(e.Indication)} {e.Message}");
-            if (e.Indication == SPWF04SxIndication.WiFiUp)
+            switch (e.Indication)
             {
-                string[] iPStringArray = e.Message.Split(new char[] { ':' });
-                if (iPStringArray.Length == 2)
-                {
-                    try
+                case SPWF04SxIndication.WiFiUp:
                     {
-                        iPAddress = IPAddress.Parse(iPStringArray[1]);
-                    }                
-                    catch
+                        string[] iPStringArray = e.Message.Split(new char[] { ':' });
+                        if (iPStringArray.Length == 2)
+                        {
+                            try
+                            {
+                                iPAddress = IPAddress.Parse(iPStringArray[1]);
+                                OnIp4AddressAssigned(this, new Ip4AssignedEventArgs(iPAddress));
+
+                            }
+                            catch
+                            { }
+                        }
+                    }
+                    break;
+                case SPWF04SxIndication.NtpServerDelivery:
+                    {
+                        var stringDateTime = e.Message;
+                        try
+                        {
+                            string[] splitDateTime = stringDateTime.Split(new char[] { ':' });
+                            string[] splitDate = splitDateTime[0].Split(new char[] { '.' });
+                            string[] splitTime = splitDateTime[2].Split(new char[] { '.' });
+                            dateTimeNtpServerDelivery = new DateTime(int.Parse(splitDate[0]), int.Parse(splitDate[1]), int.Parse(splitDate[2]), int.Parse(splitTime[0]), int.Parse(splitTime[1]), int.Parse(splitTime[2]));
+                            timeDeltaNTPServerDelivery = new TimeSpan(int.Parse(splitDateTime[1]));
+                            OnDateTimeNtpServerDelivered(this, new NTPServerDeliveryEventArgs(dateTimeNtpServerDelivery, timeDeltaNTPServerDelivery));
+                        }
+                        catch
+                        {
+                            throw new Exception("NTP Server data could not be parsed");
+                        }                       
+                    }
+                    break;
+                default:
                     { }
-                }               
-            }           
+                    break;
+            }
         }
 
+        #region Delegates
+        /// <summary>        
+        /// The delegate that is used to handle the IP4 Address received event.
+        /// </summary>
+        /// <param name="sender">The <see cref="WiFi_SPWF04S_Device"/> object that raised the event.</param>
+        /// <param name="e">The event arguments.</param>        
+        public delegate void Ip4AssignedEventHandler(WiFi_SPWF04S_Device sender, Ip4AssignedEventArgs e);
+
+        /// <summary>
+        /// Raised when the NTP Server delivers a DateTime.
+        /// </summary>
+        public event Ip4AssignedEventHandler Ip4AddressAssigned;
+
+        private Ip4AssignedEventHandler onIp4AddressAssigned;
+
+        private void OnIp4AddressAssigned(WiFi_SPWF04S_Device sender, Ip4AssignedEventArgs e)
+        {
+            if (this.onIp4AddressAssigned == null)
+            {
+                this.onIp4AddressAssigned = this.OnIp4AddressAssigned;
+            }
+            this.Ip4AddressAssigned(sender, e);
+        }
+
+        /// <summary>        
+        /// The delegate that is used to handle the DateTimeNtpServerDeliveryEvent event.
+        /// </summary>
+        /// <param name="sender">The <see cref="WiFi_SPWF04S_Device"/> object that raised the event.</param>
+        /// <param name="e">The event arguments.</param>        
+        public delegate void DateTimeNtpServerDeliveryEventHandler(WiFi_SPWF04S_Device sender, NTPServerDeliveryEventArgs e);
+
+        /// <summary>
+        /// Raised when the NTP Server delivers a DateTime.
+        /// </summary>
+        public event DateTimeNtpServerDeliveryEventHandler DateTimeNtpServerDelivered;
+
+        private DateTimeNtpServerDeliveryEventHandler onDateTimeNtpServerDelivered;
+
+        private void OnDateTimeNtpServerDelivered(WiFi_SPWF04S_Device sender, NTPServerDeliveryEventArgs e)
+        {
+            if (this.onDateTimeNtpServerDelivered == null)
+            {
+                this.onDateTimeNtpServerDelivered = this.OnDateTimeNtpServerDelivered;
+            }
+            this.DateTimeNtpServerDelivered(sender, e);
+        }
+
+        #endregion
+
+        #region Region EventArgs
+
+        public class Ip4AssignedEventArgs : EventArgs
+        {
+            /// <summary>
+            /// The IP4 IpAddress
+            /// </summary>
+            /// 
+            public IPAddress Ip4Address
+            { get; private set; }
+            internal Ip4AssignedEventArgs(IPAddress pIp4Address)
+            {
+                this.Ip4Address = pIp4Address;               
+            }
+
+        }
+
+
+            public class NTPServerDeliveryEventArgs : EventArgs
+        {
+            /// <summary>
+            /// The timezone delta to uct
+            /// </summary>
+            /// 
+            public TimeSpan TimeDeltaNTPServer
+            { get; private set; }
+
+            /// <summary>
+            /// The Dateime delivered by the NTP-Server
+            /// </summary>
+            public DateTime DateTimeNTPServer
+            { get; private set; }
+
+            internal NTPServerDeliveryEventArgs(DateTime pDateTimeNTPServer, TimeSpan pTimeDeltaNTPServer)
+            {
+                this.DateTimeNTPServer = pDateTimeNTPServer;
+                this.TimeDeltaNTPServer = pTimeDeltaNTPServer;
+            }
+        }
+        #endregion
+
+        #region Region StateToName (SPWF04SxWiFiState)
         private static string StateToName(SPWF04SxWiFiState state)
         {
             switch ((int)state)
@@ -150,7 +271,7 @@ namespace RoSchmi.Net
                 default: return "Error: SPWF04SxWiFiState: Is not defined";
             }
         }
-        // case 2: return SPWF04SxWiFiState;
+        #endregion
 
         #region Region WindToName
         private static string WindToName(SPWF04SxIndication wind)
@@ -325,5 +446,7 @@ namespace RoSchmi.Net
             }
         }
         #endregion
+
     }
 }
+

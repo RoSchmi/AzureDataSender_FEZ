@@ -11,29 +11,31 @@
 namespace AzureDataSender_FEZ
 {
     
-    internal partial class Resources
+    internal partial class ResourcesSecret
     {
         private static System.Resources.ResourceManager manager;
         internal static System.Resources.ResourceManager ResourceManager
         {
             get
             {
-                if ((Resources.manager == null))
+                if ((ResourcesSecret.manager == null))
                 {
-                    Resources.manager = new System.Resources.ResourceManager("AzureDataSender_FEZ.Resources", typeof(Resources).Assembly);
+                    ResourcesSecret.manager = new System.Resources.ResourceManager("AzureDataSender_FEZ.ResourcesSecret", typeof(ResourcesSecret).Assembly);
                 }
-                return Resources.manager;
+                return ResourcesSecret.manager;
             }
         }
-        internal static byte[] GetBytes(Resources.BinaryResources id)
+        internal static string GetString(ResourcesSecret.StringResources id)
         {
-            return ((byte[])(ResourceManager.GetObject(((short)(id)))));
+            return ((string)(ResourceManager.GetObject(((short)(id)))));
         }
         [System.SerializableAttribute()]
-        internal enum BinaryResources : short
+        internal enum StringResources : short
         {
-            DigiCert_Baltimore_Root = -10335,
-            Digicert___StackExchange = 4549,
+            SSID_1 = -29313,
+            Key_1 = -15014,
+            Key_2 = -15013,
+            SSID_2 = 13126,
         }
     }
 }

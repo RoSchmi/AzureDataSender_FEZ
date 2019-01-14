@@ -43,6 +43,11 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="ResourcesSecret.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>ResourcesSecret.resx</DependentUpon>
+    </Compile>
     <Compile Include="RoSchmi\Net\WiFi_SPWF04S_Device.cs" />
     <Compile Include="SPWF04SX_Driver\Helpers.cs" />
     <Compile Include="SPWF04SX_Driver\SPWF04SxCommand.cs" />
@@ -87,6 +92,10 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+    <EmbeddedResource Include="ResourcesSecret.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>ResourcesSecret.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\SSID_1.txt" />
@@ -99,6 +108,18 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\Key_2.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ResourcesSecret\Key_1.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ResourcesSecret\Key_2.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ResourcesSecret\SSID_1.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ResourcesSecret\SSID_2.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
