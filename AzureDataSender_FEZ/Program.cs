@@ -20,6 +20,8 @@ namespace AzureDataSender_FEZ
 {
     class Program
     {
+        private static AutoResetEvent waitForWiFiReady = new AutoResetEvent(false);
+
         private static readonly object LockProgram = new object();
 
         private static GpioPin led1;
@@ -88,7 +90,8 @@ namespace AzureDataSender_FEZ
 
 
             //wiFi_SPWF04S_Device = new WiFi_SPWF04S_Device(wifi, NetworkInterface.ActiveNetworkInterface, caCerts, wiFiSSID_1, wiFiKey_1);
-            wiFi_SPWF04S_Device = new WiFi_SPWF04S_Device(wifi, NetworkInterface.ActiveNetworkInterface, caCerts, wiFiSSID_2, wiFiKey_2);
+            wiFi_SPWF04S_Device = new WiFi_SPWF04S_Device(wifi, wiFiSSID_2, wiFiKey_2);
+            //wiFi_SPWF04S_Device = new WiFi_SPWF04S_Device(wifi, NetworkIcaCerts, wiFiSSID_2, wiFiKey_2);
 
             wiFi_SPWF04S_Device.Ip4AddressAssigned += WiFi_SPWF04S_Device_Ip4AddressAssigned;
 
@@ -97,6 +100,69 @@ namespace AzureDataSender_FEZ
 
 
             wiFi_SPWF04S_Device.Initialize();
+
+
+            wifi.ClearTlsServerRootCertificate();
+
+            waitForWiFiReady.WaitOne();  // Wait for IP Address and NTP Time ready
+
+            string host = "https://meta.stackexchange.com";
+            string url = "/";
+            string commonName = "*.stackexchange.com";
+
+
+
+            wifi.SetTlsServerRootCertificate(Resources.GetBytes(Resources.BinaryResources.Digicert___StackExchange));
+
+            if (commonName != null)
+            {
+                wifi.ForceSocketsTls = true;
+                wifi.ForceSocketsTlsCommonName = commonName;
+            }
+
+            string responseBody = string.Empty;
+
+            var buffer = new byte[512];
+            var start = DateTime.UtcNow;
+            var req = (HttpWebRequest)HttpWebRequest.Create(host + url);
+            req.HttpsAuthentCerts = caCerts;
+
+            //req.HttpsAuthentCerts = new[] { new X509Certificate() };
+
+            HttpWebResponse res = null;
+            try
+            {
+                res = (HttpWebResponse)req.GetResponse();
+            }
+            catch (Exception ex)
+            {
+                var theMessahe = ex.Message;
+            }
+
+
+            var str = res.GetResponseStream();
+            Debug.WriteLine($"HTTP {res.StatusCode}");
+            var total = 0;
+            while (str.Read(buffer, 0, buffer.Length) is var read && read > 0)
+            {
+                total += read;
+                try
+                {
+                    Debugger.Log(0, "", Encoding.UTF8.GetString(buffer, 0, read));
+                }
+                catch
+                {
+                    Debugger.Log(0, "", Encoding.UTF8.GetString(buffer, 0, read - 1));
+                }
+                if (responseBody.Length < 3000)
+                {
+                    responseBody += Encoding.UTF8.GetString(buffer, 0, read);
+                }
+                Thread.Sleep(100);
+            }
+            Debug.WriteLine($"\r\nRead: {total:N0} in {(DateTime.UtcNow - start).TotalMilliseconds:N0}ms");
+
+            
 
             while (true)
             {
@@ -151,6 +217,7 @@ namespace AzureDataSender_FEZ
 
                 dateTimeAndIpAddressAreSet = true;
             }
+            waitForWiFiReady.Set();
         }
 
 

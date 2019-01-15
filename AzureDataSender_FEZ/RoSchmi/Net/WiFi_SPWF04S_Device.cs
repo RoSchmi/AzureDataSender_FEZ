@@ -16,7 +16,7 @@ namespace RoSchmi.Net
 
         private static NetworkInterface networkInterface;
 
-        private static X509Certificate[] caCerts;
+        
 
         private string wiFiSSID;
         private string wiFiKey;
@@ -25,32 +25,30 @@ namespace RoSchmi.Net
         private DateTime dateTimeNtpServerDelivery = DateTime.MinValue;
         private TimeSpan timeDeltaNTPServerDelivery = new TimeSpan(0);
 
-        private AutoResetEvent resetEventWiFiConnected;
+        
 
 
 
         public IPAddress WiFiIPAddress { get { return iPAddress; } }
 
 
-        public WiFi_SPWF04S_Device(SPWF04SxInterface pWiFiSPWF04S, NetworkInterface pNetworkInterface, X509Certificate[] pCaCerts, string pWifiSSID, string pWifiKey)
+        public WiFi_SPWF04S_Device(SPWF04SxInterface pWiFiSPWF04S, string pWifiSSID, string pWifiKey)
         {
-            wiFiSPWF04S = pWiFiSPWF04S;
-            networkInterface = pNetworkInterface;
-            caCerts = pCaCerts;
+            wiFiSPWF04S = pWiFiSPWF04S;            
             wiFiSSID = pWifiSSID;
             wiFiKey = pWifiKey;
         }
 
         public void Initialize()
         {
-
             wiFiSPWF04S.IndicationReceived += WiFiSPWF04S_IndicationReceived;   //  (s, e) => { Debug.WriteLine($"WIND: {WindToName(e.Indication)} {e.Message}"); this.resetEventWiFiConnected.Set();};
 
             wiFiSPWF04S.ErrorReceived += (s, e) => Debug.WriteLine($"ERROR: {e.Error} {e.Message}");
 
             wiFiSPWF04S.TurnOn();
 
-            networkInterface = wiFiSPWF04S;
+            //networkInterface = wiFiSPWF04S;
+            NetworkInterface.ActiveNetworkInterface = wiFiSPWF04S;
 
             Thread.Sleep(500);
 
