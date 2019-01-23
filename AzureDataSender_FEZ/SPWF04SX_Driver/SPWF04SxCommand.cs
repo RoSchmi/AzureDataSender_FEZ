@@ -2,13 +2,14 @@
 using System.Collections;
 using System.Text;
 using GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx.Helpers;
+using System.Diagnostics;
 
 namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 {
     public sealed class SPWF04SxCommand
     {
         private readonly string[] parameters = new string[16];
-        private readonly Queue pendingReads = new Queue();
+        private readonly Queue pendingReads = new Queue();       
         private readonly Semaphore pendingReadsSemaphore = new Semaphore();
         private readonly GrowableBuffer writeHeader = new GrowableBuffer(4, 512);
         private ReadWriteBuffer readPayload;
@@ -132,7 +133,7 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                         Array.Copy(this.readPayload.Data, this.readPayload.ReadOffset, buffer, offset, count);
 
                         this.partialRead += count;
-
+                        
                         this.pendingReadsSemaphore.Release();
                     }
                 }
@@ -143,6 +144,7 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
                 this.readPayload.Read(len);
 
+                
                 return len;
             }
         }
@@ -164,6 +166,15 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                 remaining -= actual;
             }
 
+            // By RoSchmi
+            
+            if (this.readPayload.Data.Length > 4)
+            {
+                byte[] PrintOut = new byte[this.readPayload.Data.Length -4];
+                Array.Copy(this.readPayload.Data, 4, PrintOut, 0, this.readPayload.Data.Length - 4);
+                Debug.WriteLine("Readpayload.Data: " + Encoding.UTF8.GetString(PrintOut));
+            }
+
             lock (this.pendingReads)
             {
                 this.pendingReads.Enqueue(count);
@@ -174,11 +185,16 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         internal void WriteHeader(DataReaderWriter reader) => reader(this.writeHeader.Data, 0, this.writeHeaderLength);
         internal void WritePayload(DataReaderWriter reader) => reader(this.writePayload, this.writePayloadOffset, this.writePayloadLength);
 
+       
         internal void Reset()
         {
             lock (this.pendingReads)
+
                 if (!this.Sent || this.pendingReads.Count != 0)
                     throw new Exception("Not complete");
+
+                //if (!this.Sent || this.pendingReads.Count > 2)
+                //      throw new Exception("Not complete");
 
             this.Sent = false;
             this.parameterCount = 0;

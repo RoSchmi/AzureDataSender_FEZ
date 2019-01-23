@@ -36,6 +36,16 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="AzureSendManager.cs" />
+    <Compile Include="Common.cs" />
+    <Compile Include="DataContainer.cs" />
+    <Compile Include="Models\AnalogValueSet.cs" />
+    <Compile Include="PervasiveDigital\Security\ManagedProviders\HMACSHA256.cs" />
+    <Compile Include="PervasiveDigital\Security\ManagedProviders\IHashAlgorithm.cs" />
+    <Compile Include="PervasiveDigital\Security\ManagedProviders\Sha2.cs" />
+    <Compile Include="PervasiveDigital\Utilities\FormatException.cs" />
+    <Compile Include="PervasiveDigital\Utilities\StringExtensions.cs" />
+    <Compile Include="PervasiveDigital\Utilities\StringUtilities.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Resources.Designer.cs">
@@ -48,17 +58,33 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>ResourcesSecret.resx</DependentUpon>
     </Compile>
+    <Compile Include="RoSchmi\DayLightSavingTime\DayLightSavingTime.cs" />
+    <Compile Include="RoSchmi\Net\Azure\Storage\AzureStorageHelper.cs" />
+    <Compile Include="RoSchmi\Net\Azure\Storage\BasicHttpResponse.cs" />
+    <Compile Include="RoSchmi\Net\Azure\Storage\CloudStorageAccount.cs" />
+    <Compile Include="RoSchmi\Net\Azure\Storage\ITableEntity.cs" />
+    <Compile Include="RoSchmi\Net\Azure\Storage\makePropertyArray.cs" />
+    <Compile Include="RoSchmi\Net\Azure\Storage\TableClient.cs" />
+    <Compile Include="RoSchmi\Net\Azure\Storage\TableEntity.cs" />
+    <Compile Include="RoSchmi\Net\Azure\Storage\TableEntityProperty.cs" />
     <Compile Include="RoSchmi\Net\WiFi_SPWF04S_Device.cs" />
+    <Compile Include="SampleValue.cs" />
+    <Compile Include="Security\HMACMD5.cs" />
+    <Compile Include="Security\MD5.cs" />
     <Compile Include="SPWF04SX_Driver\Helpers.cs" />
     <Compile Include="SPWF04SX_Driver\SPWF04SxCommand.cs" />
     <Compile Include="SPWF04SX_Driver\SPWF04SxEnums.cs" />
     <Compile Include="SPWF04SX_Driver\SPWF04SxEvents.cs" />
     <Compile Include="SPWF04SX_Driver\SPWF04SxExceptions.cs" />
     <Compile Include="SPWF04SX_Driver\SPWF04SxInterface.cs" />
+    <Compile Include="SPWF04SX_Driver\SPWF04SxInterfaceRoSchmi.cs" />
+    <Compile Include="TempEntity.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
     <None Include="Resources\DigiCert Baltimore Root.cer" />
+    <None Include="Resources\DigiCertGlobalRootCA.crt" />
+    <None Include="Resources\Digicert___GHI.cer" />
     <None Include="Resources\Digicert___StackExchange.cer" />
   </ItemGroup>
   <ItemGroup>
@@ -98,18 +124,6 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\SSID_1.txt" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\Key_1.txt" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\SSID_2.txt" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\Key_2.txt" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="ResourcesSecret\Key_1.txt" />
   </ItemGroup>
   <ItemGroup>
@@ -120,6 +134,15 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="ResourcesSecret\SSID_2.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ResourcesSecret\AzureAccountKey.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ResourcesSecret\AzureAccountName.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="PervasiveDigital\JSON\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

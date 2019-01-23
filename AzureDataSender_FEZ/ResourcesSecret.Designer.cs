@@ -33,8 +33,10 @@ namespace AzureDataSender_FEZ
         internal enum StringResources : short
         {
             SSID_1 = -29313,
+            AzureAccountName = -17596,
             Key_1 = -15014,
             Key_2 = -15013,
+            AzureAccountKey = -13890,
             SSID_2 = 13126,
         }
     }

@@ -1,9 +1,10 @@
 ﻿using System;
+using RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx;
 
 namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 {
-    public delegate void SPWF04SxIndicationReceivedEventHandler(SPWF04SxInterface sender, SPWF04SxIndicationReceivedEventArgs e);
-    public delegate void SPWF04SxErrorReceivedEventHandler(SPWF04SxInterface sender, SPWF04SxErrorReceivedEventArgs e);
+    public delegate void SPWF04SxIndicationReceivedEventHandler(SPWF04SxInterfaceRoSchmi sender, SPWF04SxIndicationReceivedEventArgs e);
+    public delegate void SPWF04SxErrorReceivedEventHandler(SPWF04SxInterfaceRoSchmi sender, SPWF04SxErrorReceivedEventArgs e);
 
     public class SPWF04SxIndicationReceivedEventArgs : EventArgs
     {

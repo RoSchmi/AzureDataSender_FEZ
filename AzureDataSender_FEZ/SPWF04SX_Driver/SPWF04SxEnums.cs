@@ -54,7 +54,7 @@
         FSC = 0x23,
         FSD = 0x25,
         FSR = 0x26,
-        FSL = 0x27,
+        FSL = 0x27,   
         FSP = 0x28,
         HASH = 0x29,
         WPAECERT = 0x2A,

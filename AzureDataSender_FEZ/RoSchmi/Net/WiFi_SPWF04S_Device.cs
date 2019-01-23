@@ -8,11 +8,12 @@ using System.Net;
 using System.Security.Cryptography.X509Certificates;
 using GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx;
 
-namespace RoSchmi.Net
+
+namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 {
     class WiFi_SPWF04S_Device
     {
-        private static SPWF04SxInterface wiFiSPWF04S;
+        private static SPWF04SxInterfaceRoSchmi wiFiSPWF04S;
 
         private static NetworkInterface networkInterface;
 
@@ -32,7 +33,7 @@ namespace RoSchmi.Net
         public IPAddress WiFiIPAddress { get { return iPAddress; } }
 
 
-        public WiFi_SPWF04S_Device(SPWF04SxInterface pWiFiSPWF04S, string pWifiSSID, string pWifiKey)
+        public WiFi_SPWF04S_Device(SPWF04SxInterfaceRoSchmi pWiFiSPWF04S, string pWifiSSID, string pWifiKey)
         {
             wiFiSPWF04S = pWiFiSPWF04S;            
             wiFiSSID = pWifiSSID;
@@ -62,7 +63,7 @@ namespace RoSchmi.Net
         {
             SPWF04SxWiFiState theState = SPWF04SxWiFiState.ScanInProgress;
 
-            for (int i = 0; i < 60; i++)    // Try for maximal time of 30 sec
+            for (int i = 0; i < 40; i++)    // Try for maximal time of 20 sec
             {
                 try
                 {
@@ -104,7 +105,7 @@ namespace RoSchmi.Net
             }
 
 
-            wiFiSPWF04S.ClearTlsServerRootCertificate();
+           // wiFiSPWF04S.ClearTlsServerRootCertificate();
 
             var dummy4 = 1;
 
@@ -115,9 +116,10 @@ namespace RoSchmi.Net
         }
 
 
-        private void WiFiSPWF04S_IndicationReceived(SPWF04SxInterface sender, SPWF04SxIndicationReceivedEventArgs e)
+        private void WiFiSPWF04S_IndicationReceived(SPWF04SxInterfaceRoSchmi sender, SPWF04SxIndicationReceivedEventArgs e)
         {
             Debug.WriteLine($"WIND: {WindToName(e.Indication)} {e.Message}");
+
             switch (e.Indication)
             {
                 case SPWF04SxIndication.WiFiUp:

@@ -11,13 +11,15 @@ using GHIElectronics.TinyCLR.Devices.Gpio;
 using GHIElectronics.TinyCLR.Devices.Spi;
 using GHIElectronics.TinyCLR.Net.NetworkInterface;
 using GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx.Helpers;
+using GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx;
+using System.Diagnostics;
+using GHIElectronics.TinyCLR.Pins;
 
-namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
+namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
+    
 {
-    /*
-    public class SPWF04SxInterface : NetworkInterface, ISocketProvider, ISslStreamProvider, IDnsProvider, IDisposable
+    public class SPWF04SxInterfaceRoSchmi : NetworkInterface, ISocketProvider, ISslStreamProvider, IDnsProvider, IDisposable
     {
-        
         private readonly ObjectPool commandPool;
         private readonly Hashtable netifSockets;
         private readonly Queue pendingCommands;
@@ -38,6 +40,9 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         public bool ForceSocketsTls { get; set; }
         public string ForceSocketsTlsCommonName { get; set; }
 
+        //Included by RoSchmi
+        private static GpioPin led1;
+
         public static SpiConnectionSettings GetConnectionSettings(SpiChipSelectType chipSelectType, int chipSelectLine) => new SpiConnectionSettings
         {
             ClockFrequency = 8000000,
@@ -48,7 +53,7 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             ChipSelectSetupTime = TimeSpan.FromTicks(10 * 100)
         };
 
-        public SPWF04SxInterface(SpiDevice spi, GpioPin irq, GpioPin reset)
+        public SPWF04SxInterfaceRoSchmi(SpiDevice spi, GpioPin irq, GpioPin reset)
         {
             this.commandPool = new ObjectPool(() => new SPWF04SxCommand());
             this.netifSockets = new Hashtable();
@@ -66,9 +71,15 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             this.irq.SetDriveMode(GpioPinDriveMode.Input);
 
             NetworkInterface.RegisterNetworkInterface(this);
+
+            //included by RoSchmi
+            var cont = GpioController.GetDefault();
+            led1 = cont.OpenPin(FEZ.GpioPin.Led1);
+            led1.SetDriveMode(GpioPinDriveMode.Output);
+
         }
 
-        ~SPWF04SxInterface() => this.Dispose(false);
+        ~SPWF04SxInterfaceRoSchmi() => this.Dispose(false);
 
         public void Dispose()
         {
@@ -209,6 +220,166 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             return result.Substring(result.IndexOf(':') + 1);
         }
 
+        //*************************************** Added by RoSchmi  ***************************************************
+
+            public bool SetConfiguration(string confParameter, string value)
+            {
+                var cmd = this.GetCommand()
+                    .AddParameter(confParameter)
+                    .AddParameter(value)
+                    .Finalize(SPWF04SxCommandIds.SCFG);
+                this.EnqueueCommand(cmd);
+                byte[] mybuf = new byte[50];
+                int len = cmd.ReadBuffer(mybuf, 0, 50);
+                this.FinishCommand(cmd);
+                return true;
+            }
+
+
+
+        public string GetTime()
+        {
+            var cmd = this.GetCommand()                                       
+               .Finalize(SPWF04SxCommandIds.TIME);
+            this.EnqueueCommand(cmd);
+            StringBuilder stringBuilder = new StringBuilder("");
+            byte[] mybuf = new byte[50];
+            int len = mybuf.Length;
+
+            while (len > 0)
+            {
+                len = cmd.ReadBuffer(mybuf, 0, len);
+                stringBuilder.Append(Encoding.UTF8.GetString(mybuf));
+                mybuf = new byte[len];
+            }
+            this.FinishCommand(cmd);
+
+            return stringBuilder.ToString();
+        }
+
+       
+        public string ListRamFiles()
+        {
+            var cmd = this.GetCommand()                                          
+               .Finalize(SPWF04SxCommandIds.FSL);
+            this.EnqueueCommand(cmd);
+            StringBuilder stringBuilder = new StringBuilder("");
+            byte[] mybuf = new byte[50];
+            int len = mybuf.Length;
+            while (len > 0)
+            {
+                len = cmd.ReadBuffer(mybuf, 0, len);
+                stringBuilder.Append(Encoding.UTF8.GetString(mybuf));
+                mybuf = new byte[len];
+            }         
+            this.FinishCommand(cmd);
+            return stringBuilder.ToString();
+        }
+
+
+        public bool CreateRamFile(string filename, byte[] rawData)
+        {
+            if (filename == null) throw new ArgumentNullException();
+            if (rawData == null) throw new ArgumentNullException();
+            if (rawData.Length == 0) throw new ArgumentOutOfRangeException();
+
+            /*
+            var cmd = this.GetCommand()                     // Delete possibly existing in_filename
+               .AddParameter("FSD")
+               .AddParameter(filename)              
+               .Finalize(SPWF04SxCommandIds.FSD);
+            this.EnqueueCommand(cmd);
+            cmd.ReadBuffer();
+            this.FinishCommand(cmd);
+            */
+
+            //RoSchmi: has to be changed rawData.Length + 1)
+
+            var cmd = this.GetCommand()                     //Write request to out_filename                 
+                .AddParameter("/" + filename)
+                .AddParameter((rawData.Length).ToString())
+                .Finalize(SPWF04SxCommandIds.FSC, rawData, 0, rawData.Length);
+            this.EnqueueCommand(cmd);
+            
+
+
+            cmd.ReadBuffer();
+            
+          //  cmd.ReadBuffer();
+          /*
+            this.FinishCommand(cmd);
+
+            cmd = this.GetCommand()                     //Read request from out_filename 
+                .AddParameter("FSP")
+                .AddParameter("0")
+                .AddParameter(rawData.Length.ToString())
+                .Finalize(SPWF04SxCommandIds.FSP);
+            this.EnqueueCommand(cmd);
+            cmd.ReadBuffer();
+            this.FinishCommand(cmd);
+            */
+            return true;
+        }
+
+
+
+        public int SendHttpGet(string host, string path, int port, SPWF04SxConnectionSecurityType connectionSecurity, string in_filename, string out_filename, string request)
+        {
+            if (this.activeHttpCommand != null) throw new InvalidOperationException();
+
+            var cmd = this.GetCommand()                     // Delete possibly existing in_filename
+                .AddParameter("FSD")
+                .AddParameter(in_filename)
+                .Finalize(SPWF04SxCommandIds.FSD);
+            this.EnqueueCommand(cmd);
+            cmd.ReadBuffer();
+            this.FinishCommand(cmd);
+
+            cmd = this.GetCommand()                     // Delete possibly existing out_filename
+                .AddParameter("FSD")
+                .AddParameter(out_filename)
+                .Finalize(SPWF04SxCommandIds.FSD);
+            this.EnqueueCommand(cmd);
+            cmd.ReadBuffer();
+            this.FinishCommand(cmd);
+
+            cmd = this.GetCommand()                     //Write request to out_filename 
+                .AddParameter("FSC")
+                .AddParameter(out_filename)
+                .AddParameter(request.Length.ToString())
+                .Finalize(SPWF04SxCommandIds.FSC, Encoding.UTF8.GetBytes(request), 0, request.Length);
+            this.EnqueueCommand(cmd);
+            cmd.ReadBuffer();
+            this.FinishCommand(cmd);
+
+            this.activeHttpCommand = this.GetCommand()
+                .AddParameter(host)
+                .AddParameter(path)
+                .AddParameter(port.ToString())
+                .AddParameter(connectionSecurity == SPWF04SxConnectionSecurityType.None ? "0" : "2")
+                .AddParameter(null)
+                .AddParameter(null)
+                .AddParameter(in_filename)
+                .AddParameter(out_filename)
+                .Finalize(SPWF04SxCommandIds.HTTPGET);
+
+            this.EnqueueCommand(this.activeHttpCommand);
+
+            var result = this.activeHttpCommand.ReadString();
+            if (connectionSecurity == SPWF04SxConnectionSecurityType.Tls && result == string.Empty)
+            {
+                result = this.activeHttpCommand.ReadString();
+
+                if (result.IndexOf("Loading:") == 0)
+                    result = this.activeHttpCommand.ReadString();
+            }
+
+            return result.Split(':') is var parts && parts[0] == "Http Server Status Code" ? int.Parse(parts[1]) : throw new Exception($"Request failed: {result}");
+        }
+
+        //*************************************** End added by RoSchmi  ***************************************************
+
+
         public int SendHttpGet(string host, string path, int port, SPWF04SxConnectionSecurityType connectionSecurity)
         {
             if (this.activeHttpCommand != null) throw new InvalidOperationException();
@@ -291,10 +462,41 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                 .AddParameter(null)
                 .AddParameter(commonName ?? (connectionType == SPWF04SxConnectionType.Tcp ? (connectionSecurity == SPWF04SxConnectionSecurityType.Tls ? "s" : "t") : "u"))
 
-               
+                /*
+                // Explanation by RoSchmi
+                //int? x = null;
+                // Set y to the value of x if x is NOT null; otherwise,
+                // if x == null, set y to -1.
+                //int y = x ?? -1;
+
+            if (commonName == null)
+                {
+                    .AddParameter(commonName);
+                }
+                else
+                {
+                     if (connectionType == SPWF04SxConnectionType.Tcp)
+                     {
+                        if (connectionSecurity == SPWF04SxConnectionSecurityType.Tls
+                        {
+                            .AddParameter("s");
+                        }
+                        else
+                        {
+                            .AddParameter("t");
+                        }
+
+                     }
+                     else
+                     {
+                        .AddParameter("u");
+                     }
+
+                }
+                */
                 .Finalize(SPWF04SxCommandIds.SOCKON);
 
-            
+
 
 
 
@@ -493,7 +695,7 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
                 if (hasIrq || hasWrite)
                 {
-                    syncWrite[0] = (byte)(!hasIrq && hasWrite ? 0x02 : 0x00);
+                    syncWrite[0] = (byte)(!hasIrq && hasWrite ? 0x02 : 0x00);         // Write to SPWF04 module
 
                     this.spi.TransferFullDuplex(syncWrite, syncRead);
 
@@ -503,18 +705,39 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
                         if (this.activeCommand.HasWritePayload)
                         {
-                            while (this.irq.Read() == GpioPinValue.High)
-                                Thread.Sleep(0);
-
-                            this.activeCommand.WritePayload(this.spi.Write);
-
-                            while (this.irq.Read() == GpioPinValue.Low)
-                                Thread.Sleep(0);
+                            var dummy3 = 1;
+                            if (hasIrq)
+                            {
+                                while (this.irq.Read() == GpioPinValue.High)
+                                    Thread.Sleep(0);
+                            }
+                            else
+                            {
+                                Thread.Sleep(10);
+                            }
+                            try
+                            {
+                                this.activeCommand.WritePayload(this.spi.Write);
+                            }
+                            catch (Exception ex)
+                            {
+                                var messa = ex.Message;
+                            }
+                            if (hasIrq)
+                            {
+                                while (this.irq.Read() == GpioPinValue.Low)
+                                    Thread.Sleep(0);
+                            }
+                            else
+                            {
+                                Thread.Sleep(10);
+                            }
+                            var dummy4 = 1;
                         }
 
                         this.activeCommand.Sent = true;
                     }
-                    else if (syncRead[0] == 0x02)
+                    else if (syncRead[0] == 0x02)                     
                     {
                         this.spi.Read(readHeaderBuffer);
 
@@ -525,8 +748,8 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
                         this.State = (SPWF04SxWiFiState)(status & 0b0000_1111);
 
-                        if (type == 0x01 || type == 0x02)
-                        {
+                        if (type == 0x01 || type == 0x02)     // STM: 0x01 for common indications like WIND or action confirmation 
+                        {                                     //      0x02  for critical error notifications
                             if (payloadLength > 0)
                             {
                                 windPayloadBuffer.EnsureSize(payloadLength, false);
@@ -538,13 +761,14 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
                             pendingEvents.Enqueue(type == 0x01 ? new SPWF04SxIndicationReceivedEventArgs((SPWF04SxIndication)ind, str) : (object)new SPWF04SxErrorReceivedEventArgs(ind, str));
                         }
-                        else if (type == 0x03)
+                        else if (type == 0x03)           // STM: for incoming data sent over the SPI (in this case normally data are filled into payload field)
                         {
 
                             // Changes by RoSchmi
                             if (this.activeCommand == null || !this.activeCommand.Sent)
                             {
                                 var dummy2 = 1;
+                                Debug.WriteLine("Unexpected payload: Indication = " + ind.ToString());
                                 //throw new InvalidOperationException("Unexpected payload.");
                             }
 
@@ -558,8 +782,51 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                             //        break;
                             //}
 
+                            switch (ind)
+                            {
+                                case 0x00:
+                                    {
+                                        Debug.WriteLine("AT-S.OK without payload" + "PayLoad = " + payloadLength.ToString());
+                                    }//AT-S.OK without payload
+                                    break;
+                                case 0x03:
+                                    {
+                                        Debug.WriteLine("AT-S.OK with payload");
+                                    }//AT-S.OK with payload
+                                    break;
+                                case 0xFF:
+                                    {
+                                        Debug.WriteLine("AT-S.x not maskable");
+                                    }//AT-S.x not maskable
+                                    break;
+                                case 0xFE:
+                                    {
+                                        /*
+                                        if (payloadLength > 0)
+                                        {
+                                            windPayloadBuffer.EnsureSize(payloadLength, false);
+
+                                            this.spi.Read(windPayloadBuffer.Data, 0, payloadLength);
+                                        }
+
+                                        var str = Encoding.UTF8.GetString(windPayloadBuffer.Data, 0, payloadLength);
+
+                                        //pendingEvents.Enqueue(type == 0x03 ? new SPWF04SxIndicationReceivedEventArgs((SPWF04SxIndication)ind, str) : (object)new SPWF04SxErrorReceivedEventArgs(ind, str));
+                                        */
+                                        Debug.WriteLine("AT-S.x maskable");
+
+                                    }//AT-S.x maskable
+                                    break;
+                                default:
+                                    {
+                                        Debug.WriteLine("AT-S.ERROR x");
+                                    }//AT-S.ERROR x
+                                    break;
+                            }                                                                                             
                             this.activeCommand.ReadPayload(this.spi.Read, payloadLength);
+                                                                                                  
                             var dummy1 = 1;
+                        
                         }
                         else
                         {
@@ -578,8 +845,9 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                         }
                     }
                 }
-
+                //led1.Write(GpioPinValue.Low);
                 Thread.Sleep(0);
+                //led1.Write(GpioPinValue.High);
             }
         }
 
@@ -728,10 +996,9 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         public override NetworkInterfaceType NetworkInterfaceType => NetworkInterfaceType.Wireless80211;
 
         public override bool Supports(NetworkInterfaceComponent networkInterfaceComponent) => networkInterfaceComponent == NetworkInterfaceComponent.IPv4;
-     
     }
-    */
 }
+
 
 
 
