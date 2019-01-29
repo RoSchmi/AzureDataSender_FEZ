@@ -139,7 +139,7 @@ namespace AzureDataSender_FEZ
 
         private static IPAddress ip4Address = IPAddress.Parse("0.0.0.0");
 
-        static byte[] caDigiCertGlobalRootCA = Resources.GetBytes(Resources.BinaryResources.DigiCertGlobalRootCA);
+        static byte[] caDigiCertGlobalRootCA = Resources.GetBytes(Resources.BinaryResources.DigiCertGlobalRootCA);   // roschmionline
 
         static byte[] caGHI = Resources.GetBytes(Resources.BinaryResources.Digicert___GHI);
 
@@ -226,7 +226,7 @@ namespace AzureDataSender_FEZ
             wiFi_SPWF04S_Device.DateTimeNtpServerDelivered += WiFi_SPWF04S_Device_DateTimeNtpServerDelivered;
             wiFi_SPWF04S_Device.Initialize();
 
-           // wifi.ClearTlsServerRootCertificate();
+           
 
             //wifi.Id
 
@@ -247,88 +247,155 @@ namespace AzureDataSender_FEZ
 
             waitForWiFiReady.WaitOne();  // ******** Wait for IP Address and NTP Time ready   *****************************************************
 
-            //wifi.ClearTlsServerRootCertificate();
-
-            var dummy4 = 1;
-            for (int i = 0; i < 100; i++)    // Wait for 15 sec
-            {
-                Thread.Sleep(100);
-            }
+           
+            wifi.SetConfiguration("ramdisk_memsize", "18");
 
             string theTime = wifi.GetTime();
 
-         
+            wifi.ClearTlsServerRootCertificate();
 
-            string theFiles = wifi.ListRamFiles();
-            string convertString  = theFiles.Replace("File:I", "\r\n");
-            string[] fileArray = convertString.Split((char)0x0D);
-
-            wifi.SetConfiguration("ramdisk_memsize", "18");
-
-
-            wifi.CreateRamFile("rolandsfile", Encoding.UTF8.GetBytes("Das hat geklappt"));
-
-            theFiles = wifi.ListRamFiles();
-            convertString = theFiles.Replace("File:I", "\r\n");
-            fileArray = convertString.Split((char)0x0D);
-
-
-
-            wifi.ListRamFiles();
-
-            for (int i = 0; i < 100; i++)
+            var dummy4 = 1;
+            for (int i = 0; i < 150; i++)    // Wait for 15 sec
             {
                 Thread.Sleep(100);
             }
 
+            string host = "www.roschmionline.de";
+            string commonName = "*.roschmionline.de";
+            string url = "/index.html";
+            string protocol = "https";
+            int port = protocol == "https" ? 443 : 80;
+
+            string requestString = "GET " + host + url + " HTTP/1.1\r\n";
+            byte[] requestBinary = Encoding.UTF8.GetBytes(requestString);
+
+            var buffer = new byte[50];
+
+            wifi.ClearTlsServerRootCertificate();
+
+            //wifi.SetTlsServerRootCertificate(caAzure);                   // azure
+            wifi.SetTlsServerRootCertificate(caDigiCertGlobalRootCA);    // roschmionline
+
+            if (commonName != null)
+            {
+                wifi.ForceSocketsTls = true;
+                wifi.ForceSocketsTlsCommonName = commonName;
+            }
+
+            while (true)
+            {                          
+             
+                //int httpResult = wifi.SendHttpGet(host, "/index.html", 443, SPWF04SxConnectionSecurityType.Tls);
+
+                int httpResult = wifi.SendHttpGet(host, "/index.html", port, SPWF04SxConnectionSecurityType.Tls, "httpresponse01.resp", "httprequest01.requ", requestBinary);
+
+                buffer = new byte[50];
+                var start = DateTime.UtcNow;
+                var total = 0;
+                
+                while (wifi.ReadHttpResponse(buffer, 0, buffer.Length) is var read && read > 0)
+                {
+                    total += read;
+                    try
+                    {
+                      //  Debugger.Log(0, "", Encoding.UTF8.GetString(buffer, 0, read));
+
+                    }
+                    catch
+                    {
+                       // Debugger.Log(0, "", Encoding.UTF8.GetString(buffer, 0, read - 1));
+                    }
+                    Thread.Sleep(100);
+                }
+                
+                Debug.WriteLine($"\r\nRead: {total:N0} in {(DateTime.UtcNow - start).TotalMilliseconds:N0}ms");
+
+
+
+                 // string fileContent = wifi.PrintFile("httpresponse01.resp");
+
+
+                Debug.WriteLine("Remaining Ram after Request: " + GHIElectronics.TinyCLR.Native.Memory.FreeBytes + " used Bytes: " + GHIElectronics.TinyCLR.Native.Memory.UsedBytes);
+                Thread.Sleep(3000);              
+
+            }
+
+
+            /*   List of additional commands   -- do not delete  ++++++
+            
+            string theTime = wifi.GetTime();
+
+            wifi.MountMemoryVolume("2");
+
+            string theFiles = wifi.GetDiskContent();
+         
+            wifi.SetConfiguration("ramdisk_memsize", "18");
            
+            wifi.CreateRamFile("monikasfile", Encoding.UTF8.GetBytes("Das hat geklappt, ganz wunderbar. ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLMNOPQRSTUVWXYZ"));
+
+            FileEntity fileEntity = wifi.GetFileProperties("monikasfile");   // Can be used as 'FileExists' equivalent 
+
+            byte[] theData = wifi.GetFileDataBinary("monikasfile");
+
+            string fileContent = wifi.PrintFile("monikasfile");
+
+            wifi.DeleteRamFile("monikasfile");
+
+            theFiles = wifi.GetDiskContent();
+            */
+
+
+
+
 
 
             //TestHttp("http://files.ghielectronics.com", "/");
 
-             string host = "https://www.roschmionline.de";
-            string commonName = "*.roschmionline.de";
+            //string host = "https://www.roschmionline.de";
+            //string commonName = "*.roschmionline.de";
 
             //string host = "http://files.ghielectronics.com";
             //string host = "https://meta.stackexchange.com";
 
             //string url = "/";
-            string url = "/index.html";
+            //string url = "/index.html";
 
             //string commonName = "*.stackexchange.com";
-            
+
 
             //string commonName = null;
 
 
-            wifi.ClearTlsServerRootCertificate();
-            Thread.Sleep(10);
+            //wifi.ClearTlsServerRootCertificate();
+            //Thread.Sleep(10);
             //wifi.SetTlsServerRootCertificate(Resources.GetBytes(Resources.BinaryResources.Digicert___StackExchange));
 
-            Debug.WriteLine("Remaining Ram before creating Request in Main: " + GHIElectronics.TinyCLR.Native.Memory.FreeBytes + " used Bytes: " + GHIElectronics.TinyCLR.Native.Memory.UsedBytes);
+           // Debug.WriteLine("Remaining Ram before creating Request in Main: " + GHIElectronics.TinyCLR.Native.Memory.FreeBytes + " used Bytes: " + GHIElectronics.TinyCLR.Native.Memory.UsedBytes);
 
-            wifi.ClearTlsServerRootCertificate();
-            wifi.SetTlsServerRootCertificate(caDigiCertGlobalRootCA);
+            //wifi.ClearTlsServerRootCertificate();
+            //wifi.SetTlsServerRootCertificate(caDigiCertGlobalRootCA);
 
             //wifi.SetTlsServerRootCertificate(caGHI);
 
-            Thread.Sleep(10);
+            //Thread.Sleep(10);
            
-           if (commonName != null)
-           {
-                wifi.ForceSocketsTls = true;
-                wifi.ForceSocketsTlsCommonName = commonName;
-           }
+
+           //if (commonName != null)
+           //{
+           //     wifi.ForceSocketsTls = true;
+           //     wifi.ForceSocketsTlsCommonName = commonName;
+           //}
            
             
             Thread.Sleep(50);
             string responseBody = string.Empty;
             
-            var start = DateTime.UtcNow;
-            var req = (HttpWebRequest)HttpWebRequest.Create(host + url);
+           // var start = DateTime.UtcNow;
+           // var req = (HttpWebRequest)HttpWebRequest.Create(host + url);
             //req.HttpsAuthentCerts = caCerts;
-            req.HttpsAuthentCerts = new[] { new X509Certificate() };
+           // req.HttpsAuthentCerts = new[] { new X509Certificate() };
 
+            /*
             HttpWebResponse res = null;
             try
             {
@@ -338,7 +405,8 @@ namespace AzureDataSender_FEZ
             {
                 var theMessage = ex.Message;
             }
-
+            */
+            /*
             var buffer = new byte[512];
             var str = res.GetResponseStream();
             Debug.WriteLine($"HTTP {res.StatusCode}");
@@ -362,8 +430,8 @@ namespace AzureDataSender_FEZ
                 
                 Thread.Sleep(100);
             }
-            Debug.WriteLine($"\r\nRead: {total:N0} in {(DateTime.UtcNow - start).TotalMilliseconds:N0}ms");
-            
+           // Debug.WriteLine($"\r\nRead: {total:N0} in {(DateTime.UtcNow - start).TotalMilliseconds:N0}ms");
+            */
 
             Debug.WriteLine("Remaining Ram at end of main: " + GHIElectronics.TinyCLR.Native.Memory.FreeBytes + " used Bytes: " + GHIElectronics.TinyCLR.Native.Memory.UsedBytes);
 

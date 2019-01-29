@@ -40,9 +40,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         public bool ForceSocketsTls { get; set; }
         public string ForceSocketsTlsCommonName { get; set; }
 
-        //Included by RoSchmi
-        private static GpioPin led1;
-
+        
         public static SpiConnectionSettings GetConnectionSettings(SpiChipSelectType chipSelectType, int chipSelectLine) => new SpiConnectionSettings
         {
             ClockFrequency = 8000000,
@@ -70,12 +68,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
             this.irq.SetDriveMode(GpioPinDriveMode.Input);
 
-            NetworkInterface.RegisterNetworkInterface(this);
-
-            //included by RoSchmi
-            var cont = GpioController.GetDefault();
-            led1 = cont.OpenPin(FEZ.GpioPin.Led1);
-            led1.SetDriveMode(GpioPinDriveMode.Output);
+            NetworkInterface.RegisterNetworkInterface(this);          
 
         }
 
@@ -222,135 +215,250 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
         //*************************************** Added by RoSchmi  ***************************************************
 
-            public bool SetConfiguration(string confParameter, string value)
-            {
-                var cmd = this.GetCommand()
-                    .AddParameter(confParameter)
-                    .AddParameter(value)
-                    .Finalize(SPWF04SxCommandIds.SCFG);
-                this.EnqueueCommand(cmd);
-                byte[] mybuf = new byte[50];
-                int len = cmd.ReadBuffer(mybuf, 0, 50);
-                this.FinishCommand(cmd);
-                return true;
-            }
+        public void Reset()
+        {
+            var cmd = this.GetCommand()
+               .Finalize(SPWF04SxCommandIds.RESET);
+            this.EnqueueCommand(cmd);
+            cmd.ReadBuffer();
+            this.FinishCommand(cmd);
+        }
 
 
 
+        public void SendAT()
+        {
+            var cmd = this.GetCommand()             
+               .Finalize(SPWF04SxCommandIds.AT);          
+            this.EnqueueCommand(cmd);
+            cmd.ReadBuffer();
+            this.FinishCommand(cmd);
+        }
+
+
+            /// <summary>
+            /// Mounts a memory volume
+            /// 0 = External Flash, 1 = User Flash, 2 = Ram, 3 = Application Flash
+            /// </summary>
+            /// /// <param name="volume">The volume to be mounted. 0 = External Flash, 1 = User Flash, 2 = Ram, 3 = Application Flash</param>
+            public void MountMemoryVolume(string volume)     
+        {
+            if (!((volume == "0") || (volume == "1") || (volume == "2") || (volume == "3")))
+            { throw new NotSupportedException("Invalid volume. For volume only 0, 1, 2 or 3 are allowed");}
+            var cmd = this.GetCommand()
+                .AddParameter(volume)
+                .Finalize(SPWF04SxCommandIds.FSM);
+            this.EnqueueCommand(cmd);
+            byte[] readBuf = new byte[50];
+            int len = cmd.ReadBuffer(readBuf, 0, 50);
+            this.FinishCommand(cmd);           
+        }
+
+        /// <summary>
+        /// Sets the configuration of the SPWF04 module.
+        /// Make sure that only valid parameters are used.
+        /// No control mechanisms are implemented to control that things worked properly.
+        /// </summary>
+        public void SetConfiguration(string confParameter, string value)
+        {
+            var cmd = this.GetCommand()
+            .AddParameter(confParameter)
+            .AddParameter(value)
+            .Finalize(SPWF04SxCommandIds.SCFG);
+            this.EnqueueCommand(cmd);
+            byte[] readBuf = new byte[50];
+            int len = cmd.ReadBuffer(readBuf, 0, 50);
+            this.FinishCommand(cmd);           
+        }
+
+        /// <summary>
+        /// Gets time and date of SPWF04Sx module
+        /// </summary>
         public string GetTime()
         {
             var cmd = this.GetCommand()                                       
                .Finalize(SPWF04SxCommandIds.TIME);
             this.EnqueueCommand(cmd);
             StringBuilder stringBuilder = new StringBuilder("");
-            byte[] mybuf = new byte[50];
-            int len = mybuf.Length;
+            byte[] readBuf = new byte[50];
+            int len = readBuf.Length;
 
             while (len > 0)
             {
-                len = cmd.ReadBuffer(mybuf, 0, len);
-                stringBuilder.Append(Encoding.UTF8.GetString(mybuf));
-                mybuf = new byte[len];
+                len = cmd.ReadBuffer(readBuf, 0, len);
+                stringBuilder.Append(Encoding.UTF8.GetString(readBuf));
+                readBuf = new byte[len];
             }
             this.FinishCommand(cmd);
 
             return stringBuilder.ToString();
         }
 
-       
-        public string ListRamFiles()
+        /// <summary>
+        /// Gets the amount of free Ram and the list of files in the SPWF04Sx memory as a string
+        /// </summary>       
+        public string GetDiskContent()
         {
             var cmd = this.GetCommand()                                          
                .Finalize(SPWF04SxCommandIds.FSL);
             this.EnqueueCommand(cmd);
             StringBuilder stringBuilder = new StringBuilder("");
-            byte[] mybuf = new byte[50];
-            int len = mybuf.Length;
+            byte[] readBuf = new byte[50];
+            int len = readBuf.Length;
             while (len > 0)
             {
-                len = cmd.ReadBuffer(mybuf, 0, len);
-                stringBuilder.Append(Encoding.UTF8.GetString(mybuf));
-                mybuf = new byte[len];
+                len = cmd.ReadBuffer(readBuf, 0, len);
+                stringBuilder.Append(Encoding.UTF8.GetString(readBuf));
+                readBuf = new byte[len];
             }         
             this.FinishCommand(cmd);
             return stringBuilder.ToString();
         }
 
+        /// <summary>
+        /// Returns the properties 'Length', 'Volume' and 'Name' of the specified file
+        /// If the file doesn't exist null is returned (so can be used as kind of FileExists command
+        /// </summary>
+        /// <param name="filename">The file from where to retrieve the data.</param>
+        public FileEntity GetFileProperties(string filename)
+        {
+            if (filename == null) throw new ArgumentNullException();
 
-        public bool CreateRamFile(string filename, byte[] rawData)
+            FileEntity selectedFile = null;
+            string diskContent = this.GetDiskContent();
+
+            string[] filesArray = diskContent.Split(':');
+
+            for (int i = 1; i < filesArray.Length - 1; i++)
+            {
+                if (filesArray[i].LastIndexOf("File") == filesArray[i].Length - 4)
+                {
+                    filesArray[i] = filesArray[i].Substring(0, filesArray[i].Length - 4);
+                    string[] properties = filesArray[i].Split('\t');
+                    if (properties.Length == 3)
+                    {
+                        if (properties[2] == filename)
+                        {
+                            selectedFile = new FileEntity(properties[0], properties[1], properties[2]);
+                            break;
+                        }
+                    }
+                }
+            }
+            return selectedFile;
+        }
+        /// <summary>
+        /// Returns the content of a file as Byte Array. 
+        /// For UTF8 encoded data you can use the command 'PrintFile'
+        /// </summary>
+        /// <param name="filename">The file from where to retrieve the data.</param>
+        public byte[] GetFileDataBinary(string filename)
+        {
+            if (filename == null) throw new ArgumentNullException();
+            FileEntity selectedFile = this.GetFileProperties(filename);
+            if (selectedFile == null)
+            {
+                return null;
+            }
+            else
+            {
+                var cmd = this.GetCommand()
+                    .AddParameter(filename)
+                    .AddParameter("0")
+                    .AddParameter(selectedFile.Length)
+                   .Finalize(SPWF04SxCommandIds.FSP);
+                this.EnqueueCommand(cmd);
+                byte[] totalBuf = new byte[0];
+                byte[] lastBuf = new byte[0];
+                int offset = 0;
+                byte[] readBuf = new byte[50];
+                int len = readBuf.Length;
+                while (len > 0)
+                {
+                    len = cmd.ReadBuffer(readBuf, 0, len);
+                    lastBuf = totalBuf;
+                    offset = lastBuf.Length;
+                    totalBuf = new byte[offset + len];
+                    Array.Copy(lastBuf, 0, totalBuf, 0, offset);
+                    Array.Copy(readBuf, 0, totalBuf, offset, len);
+                    readBuf = new byte[len];
+                }
+                this.FinishCommand(cmd);                
+                return totalBuf;
+            }
+        }
+
+
+        /// <summary>
+        /// Returns the content of a file as UTF8 string. Be sure that the file contains UTF8 compatible data.
+        /// For binary data use the command 'GetFileDataBinary'
+        /// </summary>
+        /// <param name="filename">The file from where to retrieve the data.</param>
+        public string PrintFile(string filename)
+        {
+            if (filename == null) throw new ArgumentNullException();
+           
+            FileEntity selectedFile = this.GetFileProperties(filename);
+
+            if (selectedFile == null)
+            {
+                return null;
+            }
+            else
+            {
+                return Encoding.UTF8.GetString(this.GetFileDataBinary(filename));                
+            }
+        }
+
+        /// <summary>
+        /// Deletes a file in Ram
+        /// </summary>
+        /// <param name="filename">The file to be deleted.</param>
+        public void DeleteRamFile(string filename)
+        {
+            if (filename == null) throw new ArgumentNullException();
+            var cmd = this.GetCommand()
+                    .AddParameter(filename)                   
+                   .Finalize(SPWF04SxCommandIds.FSD);
+            this.EnqueueCommand(cmd);
+            cmd.ReadBuffer();
+            this.FinishCommand(cmd);            
+        }
+
+        /// <summary>
+        /// Creates a file in Ram. If 'append' is false, an existing file with the same name is overwritten
+        /// </summary>
+        /// <param name="filename">The file to be created.</param>
+        /// <param name="rawData">The content of the file.</param>
+        /// <param name="append">When append is true, raw data are appended when a file with the same name already exists.</param>
+        public void CreateRamFile(string filename, byte[] rawData, bool append = false)
         {
             if (filename == null) throw new ArgumentNullException();
             if (rawData == null) throw new ArgumentNullException();
             if (rawData.Length == 0) throw new ArgumentOutOfRangeException();
 
-            /*
-            var cmd = this.GetCommand()                     // Delete possibly existing in_filename
-               .AddParameter("FSD")
-               .AddParameter(filename)              
-               .Finalize(SPWF04SxCommandIds.FSD);
-            this.EnqueueCommand(cmd);
-            cmd.ReadBuffer();
-            this.FinishCommand(cmd);
-            */
-
-            //RoSchmi: has to be changed rawData.Length + 1)
-
-            var cmd = this.GetCommand()                     //Write request to out_filename                 
-                .AddParameter("/" + filename)
+            if (append == false)
+            {
+                this.DeleteRamFile(filename);              
+            }          
+            var cmd = this.GetCommand()                     // Write rawData to file                
+                .AddParameter(filename)
                 .AddParameter((rawData.Length).ToString())
                 .Finalize(SPWF04SxCommandIds.FSC, rawData, 0, rawData.Length);
             this.EnqueueCommand(cmd);
-            
-
-
-            cmd.ReadBuffer();
-            
-          //  cmd.ReadBuffer();
-          /*
-            this.FinishCommand(cmd);
-
-            cmd = this.GetCommand()                     //Read request from out_filename 
-                .AddParameter("FSP")
-                .AddParameter("0")
-                .AddParameter(rawData.Length.ToString())
-                .Finalize(SPWF04SxCommandIds.FSP);
-            this.EnqueueCommand(cmd);
-            cmd.ReadBuffer();
-            this.FinishCommand(cmd);
-            */
-            return true;
+            cmd.ReadBuffer();         
         }
 
 
-
-        public int SendHttpGet(string host, string path, int port, SPWF04SxConnectionSecurityType connectionSecurity, string in_filename, string out_filename, string request)
+        public int SendHttpGet(string host, string path, int port, SPWF04SxConnectionSecurityType connectionSecurity, string in_filename, string out_filename, byte[] request)
         {
             if (this.activeHttpCommand != null) throw new InvalidOperationException();
 
-            var cmd = this.GetCommand()                     // Delete possibly existing in_filename
-                .AddParameter("FSD")
-                .AddParameter(in_filename)
-                .Finalize(SPWF04SxCommandIds.FSD);
-            this.EnqueueCommand(cmd);
-            cmd.ReadBuffer();
-            this.FinishCommand(cmd);
+            DeleteRamFile(in_filename);             // Delete possibly existing in_filename
 
-            cmd = this.GetCommand()                     // Delete possibly existing out_filename
-                .AddParameter("FSD")
-                .AddParameter(out_filename)
-                .Finalize(SPWF04SxCommandIds.FSD);
-            this.EnqueueCommand(cmd);
-            cmd.ReadBuffer();
-            this.FinishCommand(cmd);
+            DeleteRamFile(out_filename);             // Delete possibly existing out_filename
 
-            cmd = this.GetCommand()                     //Write request to out_filename 
-                .AddParameter("FSC")
-                .AddParameter(out_filename)
-                .AddParameter(request.Length.ToString())
-                .Finalize(SPWF04SxCommandIds.FSC, Encoding.UTF8.GetBytes(request), 0, request.Length);
-            this.EnqueueCommand(cmd);
-            cmd.ReadBuffer();
-            this.FinishCommand(cmd);
+            CreateRamFile(out_filename, request);
 
             this.activeHttpCommand = this.GetCommand()
                 .AddParameter(host)
@@ -373,6 +481,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                 if (result.IndexOf("Loading:") == 0)
                     result = this.activeHttpCommand.ReadString();
             }
+            
 
             return result.Split(':') is var parts && parts[0] == "Http Server Status Code" ? int.Parse(parts[1]) : throw new Exception($"Request failed: {result}");
         }
@@ -396,9 +505,9 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                 .Finalize(SPWF04SxCommandIds.HTTPGET);
 
             this.EnqueueCommand(this.activeHttpCommand);
-
-            var result = this.activeHttpCommand.ReadString();
-            if (connectionSecurity == SPWF04SxConnectionSecurityType.Tls && result == string.Empty)
+                                    
+            var result = this.activeHttpCommand.ReadString();                                           // Http Client Error:0  - Error while resolving the hostname
+            if (connectionSecurity == SPWF04SxConnectionSecurityType.Tls && result == string.Empty)     // Http Client Error:2  - Certificate Error
             {
                 result = this.activeHttpCommand.ReadString();
 
@@ -713,7 +822,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                             }
                             else
                             {
-                                Thread.Sleep(10);
+                                //Thread.Sleep(10);
                             }
                             try
                             {
@@ -730,7 +839,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                             }
                             else
                             {
-                                Thread.Sleep(10);
+                                //Thread.Sleep(10);
                             }
                             var dummy4 = 1;
                         }
@@ -769,6 +878,12 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                             {
                                 var dummy2 = 1;
                                 Debug.WriteLine("Unexpected payload: Indication = " + ind.ToString());
+
+                                
+
+
+
+
                                 //throw new InvalidOperationException("Unexpected payload.");
                             }
 
@@ -786,47 +901,54 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                             {
                                 case 0x00:
                                     {
-                                        Debug.WriteLine("AT-S.OK without payload" + "PayLoad = " + payloadLength.ToString());
-                                    }//AT-S.OK without payload
+                                        // OK - for command without payload or after the last chunk of data of an answer on a command
+                                        // Debug.WriteLine("Indication: " + ind.ToString("X2") + " AT-S.OK without payload. " + "PayLoad = " + payloadLength.ToString());
+                                    }
+                                    break;
+                                case 0x02:
+                                    {
+                                        // Seen, actually meaning not clear
+                                        Debug.WriteLine("Indication: " + ind.ToString("X2") + " PayLoad = " + payloadLength.ToString());
+                                    }
                                     break;
                                 case 0x03:
                                     {
-                                        Debug.WriteLine("AT-S.OK with payload");
-                                    }//AT-S.OK with payload
+                                        // Seen after FSP Command
+                                        Debug.WriteLine("Indication: " + ind.ToString("X2") + " PayLoad = " + payloadLength.ToString());                                       
+                                    }
+                                    break; 
+                                case 0x2C:
+                                    {
+                                        // Seen, actually meaning not clear
+                                        Debug.WriteLine("Indication: " + ind.ToString("X2") + " PayLoad = " + payloadLength.ToString());
+                                    }
+                                    break;
+                                case 0x38:
+                                    {
+                                        // Seen after FSC (Create file) command
+                                        Debug.WriteLine("Indication: " + ind.ToString("X2") + " PayLoad = " + payloadLength.ToString());
+                                    }
                                     break;
                                 case 0xFF:
                                     {
-                                        Debug.WriteLine("AT-S.x not maskable");
-                                    }//AT-S.x not maskable
+                                        // For (following) First or consecutive chunks of data of an answer on a command
+                                        // Debug.WriteLine("Indication: " + ind.ToString("X2") + " consecutive chunk of answer. " + "PayLoad = " + payloadLength.ToString());
+                                    }
                                     break;
-                                case 0xFE:
+                                case 0xFE:              
                                     {
-                                        /*
-                                        if (payloadLength > 0)
-                                        {
-                                            windPayloadBuffer.EnsureSize(payloadLength, false);
-
-                                            this.spi.Read(windPayloadBuffer.Data, 0, payloadLength);
-                                        }
-
-                                        var str = Encoding.UTF8.GetString(windPayloadBuffer.Data, 0, payloadLength);
-
-                                        //pendingEvents.Enqueue(type == 0x03 ? new SPWF04SxIndicationReceivedEventArgs((SPWF04SxIndication)ind, str) : (object)new SPWF04SxErrorReceivedEventArgs(ind, str));
-                                        */
-                                        Debug.WriteLine("AT-S.x maskable");
-
-                                    }//AT-S.x maskable
+                                        // For the first chunk of data of an answer on a command 
+                                        // Debug.WriteLine("Indication: " + ind.ToString("X2") + " First chunk (sentence?) of answer. " + "PayLoad = " + payloadLength.ToString());
+                                    }
                                     break;
                                 default:
                                     {
-                                        Debug.WriteLine("AT-S.ERROR x");
-                                    }//AT-S.ERROR x
+                                        Debug.WriteLine("AT-S.ERROR x " + "Indication: " + ind.ToString("X2") +"PayLoad = " + payloadLength.ToString());
+                                    }
                                     break;
                             }                                                                                             
                             this.activeCommand.ReadPayload(this.spi.Read, payloadLength);
-                                                                                                  
-                            var dummy1 = 1;
-                        
+                                                                                                                         
                         }
                         else
                         {
@@ -844,10 +966,8 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                             case SPWF04SxErrorReceivedEventArgs e: this.ErrorReceived?.Invoke(this, e); break;
                         }
                     }
-                }
-                //led1.Write(GpioPinValue.Low);
-                Thread.Sleep(0);
-                //led1.Write(GpioPinValue.High);
+                }              
+                Thread.Sleep(0);             
             }
         }
 

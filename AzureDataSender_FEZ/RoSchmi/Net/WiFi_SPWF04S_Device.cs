@@ -17,18 +17,12 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
         private static NetworkInterface networkInterface;
 
-        
-
         private string wiFiSSID;
         private string wiFiKey;
 
         private IPAddress iPAddress = null;
         private DateTime dateTimeNtpServerDelivery = DateTime.MinValue;
         private TimeSpan timeDeltaNTPServerDelivery = new TimeSpan(0);
-
-        
-
-
 
         public IPAddress WiFiIPAddress { get { return iPAddress; } }
 
@@ -61,6 +55,19 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
         private void runInitThread()
         {
+            
+
+            wiFiSPWF04S.ResetConfiguration();
+
+            Thread.Sleep(1000);
+
+            wiFiSPWF04S.Reset();
+
+            for (int i = 0; i < 30; i++)
+            {
+                Thread.Sleep(100);
+            }
+
             SPWF04SxWiFiState theState = SPWF04SxWiFiState.ScanInProgress;
 
             for (int i = 0; i < 40; i++)    // Try for maximal time of 20 sec
@@ -104,8 +111,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                 var message = ex.Message;
             }
 
-
-           // wiFiSPWF04S.ClearTlsServerRootCertificate();
+           
 
             var dummy4 = 1;
 

@@ -50,6 +50,7 @@
         PWM = 0x18,
         TIME = 0x11,
         RANDOM = 0x12,
+        FSM = 0x21,           // Added by RoSchmi
         FSU = 0x22,
         FSC = 0x23,
         FSD = 0x25,

@@ -71,6 +71,7 @@
     <Compile Include="SampleValue.cs" />
     <Compile Include="Security\HMACMD5.cs" />
     <Compile Include="Security\MD5.cs" />
+    <Compile Include="SPWF04SX_Driver\FileEntity.cs" />
     <Compile Include="SPWF04SX_Driver\Helpers.cs" />
     <Compile Include="SPWF04SX_Driver\SPWF04SxCommand.cs" />
     <Compile Include="SPWF04SX_Driver\SPWF04SxEnums.cs" />
