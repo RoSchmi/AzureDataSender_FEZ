@@ -68,6 +68,7 @@
     <Compile Include="RoSchmi\Net\Azure\Storage\TableEntity.cs" />
     <Compile Include="RoSchmi\Net\Azure\Storage\TableEntityProperty.cs" />
     <Compile Include="RoSchmi\Net\WiFi_SPWF04S_Device.cs" />
+    <Compile Include="RoSchmi\Utilities\BoyerMoore.cs" />
     <Compile Include="SampleValue.cs" />
     <Compile Include="Security\HMACMD5.cs" />
     <Compile Include="Security\MD5.cs" />
@@ -83,10 +84,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="Resources\BaltimoreCyberTrustRoot.crt" />
     <None Include="Resources\DigiCert Baltimore Root.cer" />
-    <None Include="Resources\DigiCertGlobalRootCA.crt" />
-    <None Include="Resources\Digicert___GHI.cer" />
-    <None Include="Resources\Digicert___StackExchange.cer" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="GHIElectronics.TinyCLR.Devices.Display, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
@@ -117,6 +116,7 @@
   <ItemGroup>
     <EmbeddedResource Include="Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
+      <SubType>Designer</SubType>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
     <EmbeddedResource Include="ResourcesSecret.resx">

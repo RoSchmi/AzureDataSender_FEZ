@@ -215,6 +215,39 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
         //*************************************** Added by RoSchmi  ***************************************************
 
+
+        /// <summary>
+        /// Computes a hash
+        /// 0:SHA1, 1:SHA224, 2:SHA256, 3:MD5
+        /// </summary>
+        /// <param name="function">The methode to use. 0:SHA1, 1:SHA224, 2:SHA256, 3:MD5</param>
+        /// <param name="filename">The name of the file that holds the data
+        public byte[] ComputeHash(string function, string filename)   // 0:SHA1, 1:SHA224, 2:SHA256, 3:MD5
+        {
+            var cmd = this.GetCommand()
+                .AddParameter(function)
+                .AddParameter(filename)
+                .Finalize(SPWF04SxCommandIds.HASH);
+            this.EnqueueCommand(cmd);
+            byte[] totalBuf = new byte[0];
+            byte[] lastBuf = new byte[0];
+            int offset = 0;
+            byte[] readBuf = new byte[50];
+            int len = readBuf.Length;
+            while (len > 0)
+            {
+                len = cmd.ReadBuffer(readBuf, 0, len);
+                lastBuf = totalBuf;
+                offset = lastBuf.Length;
+                totalBuf = new byte[offset + len];
+                Array.Copy(lastBuf, 0, totalBuf, 0, offset);
+                Array.Copy(readBuf, 0, totalBuf, offset, len);
+                readBuf = new byte[len];
+            }
+            this.FinishCommand(cmd);
+            return totalBuf;
+        }
+
         public void Reset()
         {
             var cmd = this.GetCommand()
@@ -435,7 +468,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         {
             if (filename == null) throw new ArgumentNullException();
             if (rawData == null) throw new ArgumentNullException();
-            if (rawData.Length == 0) throw new ArgumentOutOfRangeException();
+            //if (rawData.Length == 0) throw new ArgumentOutOfRangeException();
 
             if (append == false)
             {
@@ -454,10 +487,8 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         {
             if (this.activeHttpCommand != null) throw new InvalidOperationException();
 
-            DeleteRamFile(in_filename);             // Delete possibly existing in_filename
-
+            DeleteRamFile(in_filename);              // Delete possibly existing in_filename
             DeleteRamFile(out_filename);             // Delete possibly existing out_filename
-
             CreateRamFile(out_filename, request);
 
             this.activeHttpCommand = this.GetCommand()
@@ -474,16 +505,25 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             this.EnqueueCommand(this.activeHttpCommand);
 
             var result = this.activeHttpCommand.ReadString();
+            Debug.WriteLine("1 " + result);
             if (connectionSecurity == SPWF04SxConnectionSecurityType.Tls && result == string.Empty)
             {
                 result = this.activeHttpCommand.ReadString();
-
+                //Debug.WriteLine("2 " + result);
                 if (result.IndexOf("Loading:") == 0)
                     result = this.activeHttpCommand.ReadString();
+                //Debug.WriteLine("3 " + result);
             }
             
-
-            return result.Split(':') is var parts && parts[0] == "Http Server Status Code" ? int.Parse(parts[1]) : throw new Exception($"Request failed: {result}");
+            // Changed by RoSchmi
+            try
+            {
+                return result.Split(':') is var parts && parts[0] == "Http Server Status Code" ? int.Parse(parts[1]) : throw new Exception($"Request failed: {result}");
+            }
+            catch (Exception ex)
+            {
+                return 99;
+            }
         }
 
         //*************************************** End added by RoSchmi  ***************************************************
@@ -517,6 +557,82 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
             return result.Split(':') is var parts && parts[0] == "Http Server Status Code" ? int.Parse(parts[1]) : throw new Exception($"Request failed: {result}");
         }
+
+        //**************************************    Added by RoSchmi    *******************************
+
+        /*
+        public int SendHttpGet(string host, string path, int port, SPWF04SxConnectionSecurityType connectionSecurity, string in_filename, string out_filename, byte[] request)
+        {
+            if (this.activeHttpCommand != null) throw new InvalidOperationException();
+
+            DeleteRamFile(in_filename);             // Delete possibly existing in_filename
+
+            DeleteRamFile(out_filename);             // Delete possibly existing out_filename
+
+            CreateRamFile(out_filename, request);
+
+            this.activeHttpCommand = this.GetCommand()
+                .AddParameter(host)
+                .AddParameter(path)
+                .AddParameter(port.ToString())
+                .AddParameter(connectionSecurity == SPWF04SxConnectionSecurityType.None ? "0" : "2")
+                .AddParameter(null)
+                .AddParameter(null)
+                .AddParameter(in_filename)
+                .AddParameter(out_filename)
+                .Finalize(SPWF04SxCommandIds.HTTPGET);
+
+            this.EnqueueCommand(this.activeHttpCommand);
+
+        */
+
+
+
+
+
+
+
+            public int SendHttpPost(string host, string path, int port, SPWF04SxConnectionSecurityType connectionSecurity, string in_filename, string out_filename, byte[] request)
+            {
+                if (this.activeHttpCommand != null) throw new InvalidOperationException();
+
+                DeleteRamFile(in_filename);             // Delete possibly existing in_filename
+
+                DeleteRamFile(out_filename);             // Delete possibly existing out_filename
+
+                CreateRamFile(out_filename, request);
+
+                request = null;
+
+                GC.Collect();
+
+                this.activeHttpCommand = this.GetCommand()
+                .AddParameter(host)
+                .AddParameter(path)
+                .AddParameter(port.ToString())
+                .AddParameter(connectionSecurity == SPWF04SxConnectionSecurityType.None ? "0" : "2")
+                .AddParameter(null)
+                .AddParameter(null)
+                .AddParameter(in_filename)
+                .AddParameter(out_filename)
+                .Finalize(SPWF04SxCommandIds.HTTPPOST);
+
+            this.EnqueueCommand(this.activeHttpCommand);
+
+            var result = this.activeHttpCommand.ReadString();
+            if (connectionSecurity == SPWF04SxConnectionSecurityType.Tls && result == string.Empty)
+            {
+                result = this.activeHttpCommand.ReadString();
+
+                if (result.IndexOf("Loading:") == 0)
+                    result = this.activeHttpCommand.ReadString();
+            }
+
+            return result.Split(':') is var parts && parts[0] == "Http Server Status Code" ? int.Parse(parts[1]) : throw new Exception($"Request failed: {result}");
+        }
+
+        //*************************    End added by RoSchmi     ***************************************************
+
 
         public int SendHttpPost(string host, string path, int port, SPWF04SxConnectionSecurityType connectionSecurity)
         {
@@ -612,13 +728,18 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
             this.EnqueueCommand(cmd);
 
+            // Sleep added by RoSchmi
+            //Thread.Sleep(100);
+
             var a = cmd.ReadString();
             var b = cmd.ReadString();
+            Debug.WriteLine("1 a: " + a.ToString() + " b " + b.ToString());
 
             if (connectionSecurity == SPWF04SxConnectionSecurityType.Tls && b.IndexOf("Loading:") == 0)
             {
                 a = cmd.ReadString();
                 b = cmd.ReadString();
+                Debug.WriteLine("2 a: " + a.ToString() + " b " + b.ToString());
             }
 
             this.FinishCommand(cmd);
@@ -654,9 +775,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                 .Finalize(SPWF04SxCommandIds.SOCKW, data, offset, count);
 
             this.EnqueueCommand(cmd);
-
             cmd.ReadBuffer();
-
             this.FinishCommand(cmd);
         }
 
@@ -697,6 +816,9 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             cmd.ReadBuffer();
 
             this.FinishCommand(cmd);
+            Debug.WriteLine("Finished Query");
+
+            //Debug.WriteLine(result[0] + "Res: " + result[1].ToString());
 
             return result[0] == "Query" ? int.Parse(result[1]) : throw new Exception("Request failed");
         }
@@ -712,7 +834,8 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             while (cmd.ReadString() is var s && s != string.Empty)
                 str += s + Environment.NewLine;
 
-            cmd.ReadBuffer();
+            // inactivated by RoSchmi
+            //cmd.ReadBuffer();
 
             this.FinishCommand(cmd);
 
@@ -813,36 +936,14 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                         this.activeCommand.WriteHeader(this.spi.Write);
 
                         if (this.activeCommand.HasWritePayload)
-                        {
-                            var dummy3 = 1;
-                            if (hasIrq)
-                            {
+                        {                            
                                 while (this.irq.Read() == GpioPinValue.High)
-                                    Thread.Sleep(0);
-                            }
-                            else
-                            {
-                                //Thread.Sleep(10);
-                            }
-                            try
-                            {
-                                this.activeCommand.WritePayload(this.spi.Write);
-                            }
-                            catch (Exception ex)
-                            {
-                                var messa = ex.Message;
-                            }
-                            if (hasIrq)
-                            {
+                                    Thread.Sleep(0);                                                    
+                                this.activeCommand.WritePayload(this.spi.Write);                                                      
                                 while (this.irq.Read() == GpioPinValue.Low)
-                                    Thread.Sleep(0);
-                            }
-                            else
-                            {
-                                //Thread.Sleep(10);
-                            }
-                            var dummy4 = 1;
+                                    Thread.Sleep(0);                           
                         }
+                        
 
                         this.activeCommand.Sent = true;
                     }
@@ -878,11 +979,6 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                             {
                                 var dummy2 = 1;
                                 Debug.WriteLine("Unexpected payload: Indication = " + ind.ToString());
-
-                                
-
-
-
 
                                 //throw new InvalidOperationException("Unexpected payload.");
                             }
@@ -923,12 +1019,33 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                                         Debug.WriteLine("Indication: " + ind.ToString("X2") + " PayLoad = " + payloadLength.ToString());
                                     }
                                     break;
-                                case 0x38:
+                                case 0x38:  // dez 56 unable to delete file ?
                                     {
                                         // Seen after FSC (Create file) command
                                         Debug.WriteLine("Indication: " + ind.ToString("X2") + " PayLoad = " + payloadLength.ToString());
                                     }
                                     break;
+
+                                case 0x4A:   // dez 77 failed to open socket  // Certificate error
+                                    {
+                                        // Seen, meaning not clear
+                                        Debug.WriteLine("Indication: " + ind.ToString("X2") + " PayLoad = " + payloadLength.ToString());
+                                    }
+                                    break;
+                                case 0x4C:   // dez 79 Write failed
+                                    {
+                                        // Seen, meaning not clear
+                                        Debug.WriteLine("Indication: " + ind.ToString("X2") + " PayLoad = " + payloadLength.ToString());
+                                    }
+                                    break;
+                                case 0x6F:   // dez 111 Request failed
+                                    {
+                                        // Seen, meaning not clear
+                                        Debug.WriteLine("Indication: " + ind.ToString("X2") + " PayLoad = " + payloadLength.ToString());
+                                    }
+                                    break;
+
+
                                 case 0xFF:
                                     {
                                         // For (following) First or consecutive chunks of data of an answer on a command
@@ -946,8 +1063,17 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                                         Debug.WriteLine("AT-S.ERROR x " + "Indication: " + ind.ToString("X2") +"PayLoad = " + payloadLength.ToString());
                                     }
                                     break;
-                            }                                                                                             
-                            this.activeCommand.ReadPayload(this.spi.Read, payloadLength);
+                            }
+
+                            // if clause added by RoSchmi
+                            if (this.activeCommand != null)
+                            {
+                                this.activeCommand.ReadPayload(this.spi.Read, payloadLength);
+                            }
+                            else
+                            {
+                                var dummy4 = 1;
+                            }
                                                                                                                          
                         }
                         else

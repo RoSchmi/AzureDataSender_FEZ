@@ -33,9 +33,7 @@ namespace AzureDataSender_FEZ
         internal enum BinaryResources : short
         {
             DigiCert_Baltimore_Root = -10335,
-            DigiCertGlobalRootCA = 1766,
-            Digicert___StackExchange = 4549,
-            Digicert___GHI = 19806,
+            BaltimoreCyberTrustRoot = -10127,
         }
     }
 }

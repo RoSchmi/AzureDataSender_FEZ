@@ -20,6 +20,8 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         private string wiFiSSID;
         private string wiFiKey;
 
+        private static AutoResetEvent waitForConsoleActive = new AutoResetEvent(false);
+
         private IPAddress iPAddress = null;
         private DateTime dateTimeNtpServerDelivery = DateTime.MinValue;
         private TimeSpan timeDeltaNTPServerDelivery = new TimeSpan(0);
@@ -29,7 +31,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
         public WiFi_SPWF04S_Device(SPWF04SxInterfaceRoSchmi pWiFiSPWF04S, string pWifiSSID, string pWifiKey)
         {
-            wiFiSPWF04S = pWiFiSPWF04S;            
+            wiFiSPWF04S = pWiFiSPWF04S;
             wiFiSSID = pWifiSSID;
             wiFiKey = pWifiKey;
         }
@@ -55,22 +57,16 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
         private void runInitThread()
         {
-            
-
             wiFiSPWF04S.ResetConfiguration();
-
-            Thread.Sleep(1000);
-
+            Thread.Sleep(100);
+            waitForConsoleActive.Reset();
             wiFiSPWF04S.Reset();
+            waitForConsoleActive.WaitOne();
 
-            for (int i = 0; i < 30; i++)
-            {
-                Thread.Sleep(100);
-            }
-
+            wiFiSPWF04S.ClearTlsServerRootCertificate();
             SPWF04SxWiFiState theState = SPWF04SxWiFiState.ScanInProgress;
 
-            for (int i = 0; i < 40; i++)    // Try for maximal time of 20 sec
+            for (int i = 0; i < 30; i++)    // Try for maximal time of 15 sec
             {
                 try
                 {
@@ -103,22 +99,17 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             try
             {
                 wiFiSPWF04S.JoinNetwork(wiFiSSID, wiFiKey);
-                var dummy3 = 1;
-
             }
             catch (Exception ex)
             {
                 var message = ex.Message;
             }
-
-           
-
-            var dummy4 = 1;
-
+            /*
             while (true)
             {
                 Thread.Sleep(100);
             }
+            */
         }
 
 
@@ -128,6 +119,21 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
             switch (e.Indication)
             {
+                case SPWF04SxIndication.PendingData:
+                    {
+                        OnPendingData(this, new PendingDataEventArgs(true));
+                    }
+                    break;
+                case SPWF04SxIndication.SocketClosed:
+                    {
+                        OnSocketClosed(this, new SocketClosedEventArgs(true));
+                    }
+                    break;
+                case SPWF04SxIndication.ConsoleActive:
+                    {
+                        waitForConsoleActive.Set();
+                    }
+                    break;
                 case SPWF04SxIndication.WiFiUp:
                     {
                         string[] iPStringArray = e.Message.Split(new char[] { ':' });
@@ -137,7 +143,6 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                             {
                                 iPAddress = IPAddress.Parse(iPStringArray[1]);
                                 OnIp4AddressAssigned(this, new Ip4AssignedEventArgs(iPAddress));
-
                             }
                             catch
                             { }
@@ -159,7 +164,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                         catch
                         {
                             throw new Exception("NTP Server data could not be parsed");
-                        }                       
+                        }
                     }
                     break;
                 default:
@@ -170,11 +175,59 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
         #region Delegates
         /// <summary>        
+        /// The delegate that is used to handle the Pending Data event.
+        /// </summary>
+        /// <param name="sender">The <see cref="WiFi_SPWF04S_Device"/> object that raised the event.</param>
+        /// <param name="e">The event arguments.</param>        
+        public delegate void PendingDataEventHandler(WiFi_SPWF04S_Device sender, PendingDataEventArgs e);
+
+        /// <summary>
+        /// Raised when data are pending.
+        /// </summary>
+        public event PendingDataEventHandler PendingSocketData;
+        private PendingDataEventHandler onPendingData;
+
+        private void OnPendingData(WiFi_SPWF04S_Device sender, PendingDataEventArgs e)
+        {
+            if (this.onPendingData == null)
+            {
+                this.onPendingData = this.OnPendingData;
+            }
+            this.PendingSocketData(sender, e);
+        }
+
+
+
+
+        /// <summary>        
+        /// The delegate that is used to handle the SocketClosed event.
+        /// </summary>
+        /// <param name="sender">The <see cref="WiFi_SPWF04S_Device"/> object that raised the event.</param>
+        /// <param name="e">The event arguments.</param>        
+        public delegate void SocketClosedEventHandler(WiFi_SPWF04S_Device sender, SocketClosedEventArgs e);
+
+        /// <summary>
+        /// Raised when the Socket was closed.
+        /// </summary>
+        public event SocketClosedEventHandler SocketWasClosed;
+        private SocketClosedEventHandler onSocketClosed;
+
+        private void OnSocketClosed(WiFi_SPWF04S_Device sender, SocketClosedEventArgs e)
+        {
+            if (this.onSocketClosed == null)
+            {
+                this.onSocketClosed = this.OnSocketClosed;
+            }
+            this.SocketWasClosed(sender, e);
+        }
+
+        /// <summary>        
         /// The delegate that is used to handle the IP4 Address received event.
         /// </summary>
         /// <param name="sender">The <see cref="WiFi_SPWF04S_Device"/> object that raised the event.</param>
         /// <param name="e">The event arguments.</param>        
         public delegate void Ip4AssignedEventHandler(WiFi_SPWF04S_Device sender, Ip4AssignedEventArgs e);
+
 
         /// <summary>
         /// Raised when the NTP Server delivers a DateTime.
@@ -218,7 +271,35 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         #endregion
 
         #region Region EventArgs
+        public class PendingDataEventArgs : EventArgs
+        {
+            /// <summary>
+            /// Indicates that Socket data are pending
+            /// </summary>
+            ///
+            public bool SocketDataPending
+            { get; private set; }
+            internal PendingDataEventArgs(bool pSocketDataPending)
+            {
+                this.SocketDataPending = pSocketDataPending;
+            }
+        }
 
+
+
+        public class SocketClosedEventArgs :EventArgs
+        {
+            /// <summary>
+            /// Indicates that Socket was closed
+            /// </summary>
+            ///
+            public bool SocketIsClosed
+            { get; private set; }
+            internal SocketClosedEventArgs(bool pSocketIsClosed)
+            {
+                this.SocketIsClosed = pSocketIsClosed;
+            }
+        }
         public class Ip4AssignedEventArgs : EventArgs
         {
             /// <summary>

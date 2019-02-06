@@ -118,16 +118,10 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
-  <data name="DigiCertGlobalRootCA" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>Resources\DigiCertGlobalRootCA.crt;System.Byte[], mscorlib, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null</value>
+  <data name="BaltimoreCyberTrustRoot" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Resources\BaltimoreCyberTrustRoot.crt;System.Byte[], mscorlib, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null</value>
   </data>
   <data name="DigiCert_Baltimore_Root" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Resources\DigiCert Baltimore Root.cer;System.Byte[], mscorlib, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null</value>
-  </data>
-  <data name="Digicert___GHI" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>Resources\Digicert___GHI.cer;System.Byte[], mscorlib, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null</value>
-  </data>
-  <data name="Digicert___StackExchange" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>Resources\Digicert___StackExchange.cer;System.Byte[], mscorlib, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null</value>
   </data>
 </root>

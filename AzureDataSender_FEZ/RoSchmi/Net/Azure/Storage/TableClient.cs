@@ -19,6 +19,8 @@ using PervasiveDigital.Security.ManagedProviders;
 
 using System.Security.Cryptography.X509Certificates;
 using System.Diagnostics;
+using RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx;
+using AzureDataSender_FEZ;
 
 
 namespace RoSchmi.Net.Azure.Storage
@@ -262,11 +264,6 @@ namespace RoSchmi.Net.Azure.Storage
 
             string TableEndPoint = _account.UriEndpoints["Table"].ToString();
 
-
-            
-          
-
-
             Uri uri = new Uri(TableEndPoint + "/Tables()");
 
             var tableTypeHeaders = new Hashtable();
@@ -309,7 +306,8 @@ namespace RoSchmi.Net.Azure.Storage
 
             string acceptType = getAcceptTypeString(pAcceptType);
             if (pAcceptType == AcceptType.applicationIjson)
-            { acceptType = "application/json;odata=minimalmetadata"; }
+            //{ acceptType = "application/json;odata=minimalmetadata"; }
+            { acceptType = "application/json;odata=nometadata"; }
 
             string HttpVerb = "DELETE";
             string ContentMD5 = string.Empty;
@@ -366,8 +364,9 @@ namespace RoSchmi.Net.Azure.Storage
             string contentType = getContentTypeString(pContentType);
 
             string acceptType = getAcceptTypeString(pAcceptType);
-            if (pAcceptType == AcceptType.applicationIjson)
-            { acceptType = "application/json;odata=minimalmetadata"; }
+            if (pAcceptType == AcceptType.applicationIjson)           
+            { acceptType = "application/json;odata=nometadata"; }
+            //{ acceptType = "application/json;odata=minimalmetadata"; }
 
             string HttpVerb = "GET";
             string ContentMD5 = string.Empty;
@@ -399,8 +398,8 @@ namespace RoSchmi.Net.Azure.Storage
             {
                 AzureStorageHelper.SetDebugMode(_debug);
                 AzureStorageHelper.SetDebugLevel(_debug_level);
-                response = AzureStorageHelper.SendWebRequest(uri, authorizationHeader, timestamp, VersionHeader, payload, contentLength, HttpVerb, false, acceptType, tableTypeHeaders);
-
+                response = AzureStorageHelper.SendWebRequest(uri, authorizationHeader, timestamp, VersionHeader, payload, contentLength, HttpVerb, true, acceptType, tableTypeHeaders);
+                
                 return response.StatusCode;
             }
             catch (Exception ex)
@@ -499,7 +498,7 @@ namespace RoSchmi.Net.Azure.Storage
         #endregion
 
         #region QueryTableEnities (overloaded)
-        /*
+        
         public  HttpStatusCode QueryTableEntities(string tableName, string partitionKey, string rowKey, string query = "", ContType contentType = ContType.applicationIatomIxml, AcceptType acceptType =  AcceptType.applicationIjson, bool useSharedKeyLite = false)
         {
             _Query = query;
@@ -531,7 +530,10 @@ namespace RoSchmi.Net.Azure.Storage
 
             string acceptType = getAcceptTypeString(pAcceptType);
             if (pAcceptType == AcceptType.applicationIjson)
-            { acceptType = "application/json;odata=minimalmetadata"; }
+            //{ acceptType = "application/json;odata=minimalmetadata"; }
+            { acceptType = "application/json;odata=nometadata"; }        
+            //{ acceptType = "application/json;odata=fullmetadata"; }
+
 
             string HttpVerb = "GET";
             string ContentMD5 = string.Empty;
@@ -606,7 +608,7 @@ namespace RoSchmi.Net.Azure.Storage
                 return response.StatusCode;
             }
         }
-        */
+        
         #endregion
 
         #region DeleteTableEntity
@@ -946,15 +948,30 @@ namespace RoSchmi.Net.Azure.Storage
             pMD5Hash = string.Empty;
             pHash = null;
 
+            
+
+            //string Md5String = Encoding.UTF8.GetString(Program.wifi.ComputeHash("3", "fileToHash")).Substring(4);
+
+            //byte[] MD5Hash = Convert.FromBase64String(Md5String);
+
+           // byte[] hashResult = Program.wifi.ComputeHash("3", "fileToHash");
+
+
             if (!useSharedKeyLite)
             {
-                string StringData = Encoding.UTF8.GetString(content);
-                pHash = xBrainLab.Security.Cryptography.MD5.GetHash(StringData);
+               string StringData = Encoding.UTF8.GetString(content);    // alt
 
-                pMD5Hash = xBrainLab.Security.Cryptography.MD5.GetHashString(StringData);
+                /*
+                Program.wifi.CreateRamFile("fileToHash", content);
+                pMD5Hash = Encoding.UTF8.GetString(Program.wifi.ComputeHash("3", "fileToHash")).Substring(4);
+                pHash = Convert.FromBase64String(pMD5Hash);
+                */
 
+               pHash = xBrainLab.Security.Cryptography.MD5.GetHash(StringData);            //alt
+               pMD5Hash = xBrainLab.Security.Cryptography.MD5.GetHashString(StringData);   //alt
 
-                //   pMD5Hash = MD5ComputeHash(content);
+                var dummy56 = 1;
+                //   pMD5Hash = MD5ComputeHash(content);    // uralt
 
 
             }
@@ -966,13 +983,27 @@ namespace RoSchmi.Net.Azure.Storage
             }
             else
             {
-                toSign = StringUtilities.Format("{0}\n{4}\n{1}\n{2}\n{3}", pHttpVerb, contentType, ptimeStamp, canonicalResource, pMD5Hash);
+               toSign = StringUtilities.Format("{0}\n{4}\n{1}\n{2}\n{3}", pHttpVerb, contentType, ptimeStamp, canonicalResource, pMD5Hash);
             }
 
             string signature;
+
+            //toSign = @"POST\n56487EFE04B9981AB97DE7D20353F298\napplication/atom+xml\nTue, 29 Jan 2019 22:38:48 GMT\n/roschmi01/Tables()";
+
+            /*
+            Program.wifi.CreateRamFile("fileSHA256", Convert.FromBase64String(_account.AccountKey));
+            string strSHA256Hash = Encoding.UTF8.GetString(Program.wifi.ComputeHash("2", "fileSHA256")).Substring(7);
+            byte[] theHmac = Convert.FromBase64String(strSHA256Hash);
+            */
+
+            //var theHmac = Program.wifi.ComputeHash("2", "fileSHA256");
+
+
+
             var hmac = new PervasiveDigital.Security.ManagedProviders.HMACSHA256(Convert.FromBase64String(_account.AccountKey));
             var hmacBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(toSign));
             signature = Convert.ToBase64String(hmacBytes).Replace("!", "+").Replace("*", "/"); ;
+            
             if (useSharedKeyLite)
             {
                 return "SharedKeyLite " + _account.AccountName + ":" + signature;
