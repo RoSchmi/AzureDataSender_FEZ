@@ -13,6 +13,7 @@ using GHIElectronics.TinyCLR.Devices.Gpio;
 using GHIElectronics.TinyCLR.Devices.Spi;
 using GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx;
 using GHIElectronics.TinyCLR.Pins;
+using GHIElectronics.TinyCLR.Storage.Streams;
 using RoSchmi.Net;
 using RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx;
 
@@ -72,7 +73,7 @@ namespace AzureDataSender_FEZ
 
         // Set the name of the table for analog values (name must be conform to special rules: see Azure)
 
-        private static string analogTableName = "AnalogRolTable2";
+        private static string analogTableName = "AnalogTestValues";
 
         private static string analogTablePartPrefix = "Y2_";     // Your choice (name must be conform to special rules: see Azure)
         private static bool augmentPartitionKey = true;
@@ -183,7 +184,10 @@ namespace AzureDataSender_FEZ
             var scont = SpiController.FromName(FEZ.SpiBus.WiFi);
             
             var spi = scont.GetDevice(SPWF04SxInterfaceRoSchmi.GetConnectionSettings(SpiChipSelectType.Gpio, FEZ.GpioPin.WiFiChipSelect));
-                    
+              
+           
+           
+
             wifi = new SPWF04SxInterfaceRoSchmi(spi, irq, reset);
          
             wiFi_SPWF04S_Device = new WiFi_SPWF04S_Device(wifi, wiFiSSID_1, wiFiKey_1);
@@ -201,13 +205,13 @@ namespace AzureDataSender_FEZ
             wiFi_SPWF04S_Device.Initialize();
 
            
+            
 
-           
 
             //wifi.GetPhysicalAddress
 
-            
-           
+
+
             connectionString = "DefaultEndpointsProtocol=https;AccountName=" + storageAccountName + "; AccountKey=" + storageKey;
 
             myCloudStorageAccount = new CloudStorageAccount(storageAccountName, storageKey, useHttps: Azure_useHTTPS);
@@ -278,72 +282,72 @@ namespace AzureDataSender_FEZ
 
             ArrayList theQuery = new ArrayList();
 
-          // while (true)
-          //{
+            // while (true)
+            //{
 
 
-               // HttpStatusCode resultCreate = createTable(myCloudStorageAccount, "tableoftoday");
-                   
+            // HttpStatusCode resultCreate = createTable(myCloudStorageAccount, "tableoftoday");
+
             //    HttpStatusCode resultQuery = queryTableEntities(myCloudStorageAccount, "mypeople", "$top=1", out theQuery);
 
-              //  HttpStatusCode resultQuery = queryTableEntities(myCloudStorageAccount, "Refrigerator2019", "$top=1", out theQuery);
+            //  HttpStatusCode resultQuery = queryTableEntities(myCloudStorageAccount, "Refrigerator2019", "$top=1", out theQuery);
 
-               // TestSocket(host, url, port, SPWF04SxConnectionType.Tcp, SPWF04SxConnectionSecurityType.Tls, commonName);
-
-
+            // TestSocket(host, url, port, SPWF04SxConnectionType.Tcp, SPWF04SxConnectionSecurityType.Tls, commonName);
 
 
 
 
 
-                //int httpResult = wifi.SendHttpGet(host, "/index.html", 443, SPWF04SxConnectionSecurityType.Tls);
 
-                //*****     This is a working example HttpGET Request    ***************
-                /*  
-                int httpResult = wifi.SendHttpGet(host, "/index.html", port, SPWF04SxConnectionSecurityType.Tls, "httpresponse01.resp", "httprequest01.requ", requestBinary);
 
-                buffer = new byte[50];
-                var start = DateTime.UtcNow;
-                var total = 0;
-                
-                while (wifi.ReadHttpResponse(buffer, 0, buffer.Length) is var read && read > 0)
+            //int httpResult = wifi.SendHttpGet(host, "/index.html", 443, SPWF04SxConnectionSecurityType.Tls);
+
+            //*****     This is a working example HttpGET Request    ***************
+            /*  
+            int httpResult = wifi.SendHttpGet(host, "/index.html", port, SPWF04SxConnectionSecurityType.Tls, "httpresponse01.resp", "httprequest01.requ", requestBinary);
+
+            buffer = new byte[50];
+            var start = DateTime.UtcNow;
+            var total = 0;
+
+            while (wifi.ReadHttpResponse(buffer, 0, buffer.Length) is var read && read > 0)
+            {
+                total += read;
+                try
                 {
-                    total += read;
-                    try
-                    {
-                      //  Debugger.Log(0, "", Encoding.UTF8.GetString(buffer, 0, read));
+                  //  Debugger.Log(0, "", Encoding.UTF8.GetString(buffer, 0, read));
 
-                    }
-                    catch
-                    {
-                       // Debugger.Log(0, "", Encoding.UTF8.GetString(buffer, 0, read - 1));
-                    }
-                    Thread.Sleep(100);
                 }
-                
-                Debug.WriteLine($"\r\nRead: {total:N0} in {(DateTime.UtcNow - start).TotalMilliseconds:N0}ms");
-                
+                catch
+                {
+                   // Debugger.Log(0, "", Encoding.UTF8.GetString(buffer, 0, read - 1));
+                }
+                Thread.Sleep(100);
+            }
 
-
-                string fileContent = wifi.PrintFile("httpresponse01.resp");
-                */
-
-              //  HttpStatusCode  createTableReturnCode = createTable(myCloudStorageAccount, "TestVonHeute");
-
-
+            Debug.WriteLine($"\r\nRead: {total:N0} in {(DateTime.UtcNow - start).TotalMilliseconds:N0}ms");
 
 
 
+            string fileContent = wifi.PrintFile("httpresponse01.resp");
+            */
 
-              //  while (true)
-              //  {
-              //      Thread.Sleep(200);
-              //  }
+            //  HttpStatusCode  createTableReturnCode = createTable(myCloudStorageAccount, "TestVonHeute");
 
-             //   Debug.WriteLine("Remaining Ram after Request: " + GHIElectronics.TinyCLR.Native.Memory.FreeBytes + " used Bytes: " + GHIElectronics.TinyCLR.Native.Memory.UsedBytes);
-             //   Thread.Sleep(3000);              
 
-           // }
+
+
+
+
+            //  while (true)
+            //  {
+            //      Thread.Sleep(200);
+            //  }
+
+            //   Debug.WriteLine("Remaining Ram after Request: " + GHIElectronics.TinyCLR.Native.Memory.FreeBytes + " used Bytes: " + GHIElectronics.TinyCLR.Native.Memory.UsedBytes);
+            //   Thread.Sleep(3000);              
+
+            // }
 
 
             /*   List of additional commands   -- do not delete  ++++++
@@ -395,7 +399,7 @@ namespace AzureDataSender_FEZ
             //Thread.Sleep(10);
             //wifi.SetTlsServerRootCertificate(Resources.GetBytes(Resources.BinaryResources.Digicert___StackExchange));
 
-           // Debug.WriteLine("Remaining Ram before creating Request in Main: " + GHIElectronics.TinyCLR.Native.Memory.FreeBytes + " used Bytes: " + GHIElectronics.TinyCLR.Native.Memory.UsedBytes);
+            // Debug.WriteLine("Remaining Ram before creating Request in Main: " + GHIElectronics.TinyCLR.Native.Memory.FreeBytes + " used Bytes: " + GHIElectronics.TinyCLR.Native.Memory.UsedBytes);
 
             //wifi.ClearTlsServerRootCertificate();
             //wifi.SetTlsServerRootCertificate(caDigiCertGlobalRootCA);
@@ -403,24 +407,24 @@ namespace AzureDataSender_FEZ
             //wifi.SetTlsServerRootCertificate(caGHI);
 
             //Thread.Sleep(10);
-           
-
-           //if (commonName != null)
-           //{
-           //     wifi.ForceSocketsTls = true;
-           //     wifi.ForceSocketsTlsCommonName = commonName;
-           //}
-           
-            
-           // Thread.Sleep(50);
 
 
-           // string responseBody = string.Empty;
-            
-           // var start = DateTime.UtcNow;
-           // var req = (HttpWebRequest)HttpWebRequest.Create(host + url);
+            //if (commonName != null)
+            //{
+            //     wifi.ForceSocketsTls = true;
+            //     wifi.ForceSocketsTlsCommonName = commonName;
+            //}
+
+
+            // Thread.Sleep(50);
+
+
+            // string responseBody = string.Empty;
+
+            // var start = DateTime.UtcNow;
+            // var req = (HttpWebRequest)HttpWebRequest.Create(host + url);
             //req.HttpsAuthentCerts = caCerts;
-           // req.HttpsAuthentCerts = new[] { new X509Certificate() };
+            // req.HttpsAuthentCerts = new[] { new X509Certificate() };
 
             /*
             HttpWebResponse res = null;
@@ -459,6 +463,9 @@ namespace AzureDataSender_FEZ
             }
            // Debug.WriteLine($"\r\nRead: {total:N0} in {(DateTime.UtcNow - start).TotalMilliseconds:N0}ms");
             */
+            long totalMemory = GC.GetTotalMemory(true);
+            Debug.WriteLine("Total Memory: " + totalMemory.ToString());
+
 
             Debug.WriteLine("Remaining Ram at end of main: " + GHIElectronics.TinyCLR.Native.Memory.FreeBytes + " used Bytes: " + GHIElectronics.TinyCLR.Native.Memory.UsedBytes);
 
@@ -528,11 +535,17 @@ namespace AzureDataSender_FEZ
 
             bool Azure_useHTTPS = true;
 
+
             myCloudStorageAccount = new CloudStorageAccount(storageAccountName, storageKey, useHttps: Azure_useHTTPS);
 
+            HttpStatusCode resultTableCreate = HttpStatusCode.Ambiguous;
+            if (!AnalogCloudTableExists)
+            {
+                resultTableCreate = createTable(myCloudStorageAccount, analogTableName);
+            }
 
             
-                HttpStatusCode resultTableCreate = createTable(myCloudStorageAccount, analogTableName);
+               
                 if ((resultTableCreate == HttpStatusCode.Created) || (resultTableCreate == HttpStatusCode.NoContent) || (resultTableCreate == HttpStatusCode.Conflict))
                 {
                     AnalogCloudTableExists = true;
@@ -564,6 +577,16 @@ namespace AzureDataSender_FEZ
                        + (23 - actDate.Hour).ToString("D2") + (59 - actDate.Minute).ToString("D2") + (59 - actDate.Second).ToString("D2");
 
             string sampleTime = actDate.Month.ToString("D2") + "/" + actDate.Day.ToString("D2") + "/" + actDate.Year + " " + actDate.Hour.ToString("D2") + ":" + actDate.Minute.ToString("D2") + ":" + actDate.Second.ToString("D2");
+
+
+            ArrayList propertiesAL = AnalogTablePropertiesAL.AnalogPropertiesAL(sampleTime, 10.1, 20.2, 30.3, 40.4);
+
+            AnalogTableEntity analogTableEntity = new AnalogTableEntity(partitionKey, reverseDate, propertiesAL);
+
+            string insertEtag = string.Empty;
+                
+            HttpStatusCode insertResult = insertTableEntity(myCloudStorageAccount, analogTableName, analogTableEntity, out insertEtag);
+
 
             /*
             string[] propertyNames = new string[4] { Analog_1.Text, Analog_2.Text, Analog_3.Text, Analog_4.Text };
@@ -805,12 +828,12 @@ namespace AzureDataSender_FEZ
             // HttpStatusCode resultQuery = queryTableEntities(myCloudStorageAccount, "mypeople", "$top=1", out theQuery);
 
 
-            AnalogValueSet analogValueSet = new AnalogValueSet(1, DateTime.Now, 10.0);
+           // AnalogValueSet analogValueSet = new AnalogValueSet(1, DateTime.Now, 10.0);
 
-            TableEntity tableEntity = new TableEntity(partitionKey, reverseDate);
+            //TableEntity tableEntity = new TableEntity(partitionKey, reverseDate);
 
 
-            string insertEtag = string.Empty;
+           
 
           //  HttpStatusCode insertTableEntityResult = insertTableEntity(myCloudStorageAccount, analogTableName, tableEntity, out insertEtag);
 

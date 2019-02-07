@@ -25,9 +25,10 @@ namespace AzureDataSender_FEZ
             {
                 PartitionKey = partitionKey,
                 RowKey = rowKey,
-                /*
+                
                 // get the values out of the ArrayList
                 actTemp = ((string[])this.Properties[0])[2],        // Row 0, arrayfield 2
+                /*
                 min = ((string[])this.Properties[1])[2],            // Row 1, arrayfield 2
                 max = ((string[])this.Properties[2])[2],            // Row 2, arrayfield 2   
                 report = ((string[])this.Properties[3])[2],         

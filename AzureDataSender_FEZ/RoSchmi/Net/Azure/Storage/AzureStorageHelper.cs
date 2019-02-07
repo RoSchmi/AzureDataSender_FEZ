@@ -183,7 +183,7 @@ namespace RoSchmi.Net.Azure.Storage
                     bool isSocketRequest = true;
                     SPWF04SxRequest = PrepareSPWF04SxRequest(url, authHeader, dateHeader, versionHeader, payload, contentLength, httpVerb, isSocketRequest, expect100Continue, acceptType, additionalHeaders);
 
-                    //Debug.WriteLine(SPWF04SxRequest);
+                    Debug.WriteLine(SPWF04SxRequest);
 
                     byte[] requestBinary = Encoding.UTF8.GetBytes(SPWF04SxRequest);
 
@@ -204,7 +204,7 @@ namespace RoSchmi.Net.Azure.Storage
 
                     //string path = "/Refrigerator2019()?$top=1";
 
-                    string path = "/Refrigerator2019";
+                    //string path = "/Refrigerator2019";
                     //string path = "/Tables";
 
 
@@ -262,7 +262,8 @@ namespace RoSchmi.Net.Azure.Storage
                         long totalMemory = GC.GetTotalMemory(true);
                         Debug.WriteLine("Total Memory: " + totalMemory.ToString());
 
-                        id = Program.wifi.OpenSocket("prax47.table.core.windows.net", 443, SPWF04SxConnectionType.Tcp, securityType, "*.table.core.windows.net");
+                        //id = Program.wifi.OpenSocket("prax47.table.core.windows.net", 443, SPWF04SxConnectionType.Tcp, securityType, "*.table.core.windows.net");
+                        id = Program.wifi.OpenSocket(url.Host, 443, SPWF04SxConnectionType.Tcp, securityType, "*.table.core.windows.net");
                         start = DateTime.UtcNow;
                         Thread.Sleep(10);
 
@@ -295,8 +296,12 @@ namespace RoSchmi.Net.Azure.Storage
                         int read = buffer.Length;
                         timeCtr = 0;
 
-                        //while ((Program.wifi.QuerySocket(id) is var avail && avail > 0) || first || total < 120)
-                        while (((Program.wifi.QuerySocket(id) is var avail && avail > 0) || first || total < 120) && (timeCtr < 30))
+                    long totalMemory2 = GC.GetTotalMemory(true);
+                    Debug.WriteLine("Total Memory: " + totalMemory2.ToString());
+
+
+                    //while ((Program.wifi.QuerySocket(id) is var avail && avail > 0) || first || total < 120)
+                    while (((Program.wifi.QuerySocket(id) is var avail && avail > 0) || first || total < 120) && (timeCtr < 30))
                         {
                             if (avail > 0)
                             {
@@ -1021,9 +1026,10 @@ return new BasicHttpResponse() { ETag = null, Body = responseBody, StatusCode = 
                             requ.Append("\r\n" + additionalHeader.ToString() + ": " + additionalHeaders[additionalHeader].ToString());
                         }
                     }
+                    // RoSchmi
                     requ.Append("\r\n" + "Content-Length: " + contentLength.ToString());
                     requ.Append("\r\n" + "Connection: " + "Close");
-                    requ.Append("\r\n" + "Host: " + "prax47.table.core.windows.net");
+                    requ.Append("\r\n" + "Host: " + url.Host);
 
             if (isSocketRequest)
             {

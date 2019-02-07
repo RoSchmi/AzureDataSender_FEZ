@@ -961,16 +961,24 @@ namespace RoSchmi.Net.Azure.Storage
             {
                string StringData = Encoding.UTF8.GetString(content);    // alt
 
-                /*
-                Program.wifi.CreateRamFile("fileToHash", content);
-                pMD5Hash = Encoding.UTF8.GetString(Program.wifi.ComputeHash("3", "fileToHash")).Substring(4);
-                pHash = Convert.FromBase64String(pMD5Hash);
-                */
+                //if (StringData != "")
+                //{
+                    /*
+                    Program.wifi.DeleteRamFile("fileToHash");
+                    Program.wifi.CreateRamFile("fileToHash", content);
+                    pMD5Hash = Encoding.UTF8.GetString(Program.wifi.ComputeHash("3", "fileToHash")).Substring(4);
+                    pHash = Convert.FromBase64String(pMD5Hash);
+                    */
 
-               pHash = xBrainLab.Security.Cryptography.MD5.GetHash(StringData);            //alt
-               pMD5Hash = xBrainLab.Security.Cryptography.MD5.GetHashString(StringData);   //alt
-
+               // }
+              //  else
+               // { 
+                    pHash = xBrainLab.Security.Cryptography.MD5.GetHash(StringData);            //alt
+                    pMD5Hash = xBrainLab.Security.Cryptography.MD5.GetHashString(StringData);   //alt
+               // }
                 var dummy56 = 1;
+
+
                 //   pMD5Hash = MD5ComputeHash(content);    // uralt
 
 
