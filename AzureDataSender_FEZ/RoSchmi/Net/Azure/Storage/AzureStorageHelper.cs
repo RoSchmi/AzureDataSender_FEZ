@@ -172,7 +172,7 @@ namespace RoSchmi.Net.Azure.Storage
                 HttpWebResponse response = null;
                 string _responseHeader_ETag = null;
                 string _responseHeader_Content_MD5 = null;
-                //HttpWebRequest request = null;
+                HttpWebRequest request = null;
                 string SPWF04SxRequest = null;
                 try
                 {
@@ -190,17 +190,39 @@ namespace RoSchmi.Net.Azure.Storage
                    SPWF04SxRequest = "";
 
                     var buffer = new byte[200];
-                    //Program.wifi.SetTlsServerRootCertificate(Program.caAzure);                   // azure
-                    Program.wifi.SetTlsServerRootCertificate(Resources.GetBytes(Resources.BinaryResources.BaltimoreCyberTrustRoot));
-                    Program.wifi.ForceSocketsTls = true;
-                    //string host = "prax47.table.core.windows.net";
+
+
+                   
                     string protocol = "https";
+
+                    
+                    if (httpVerb == "GET")
+                    {
+                        Program.wifi.ClearTlsServerRootCertificate();
+                        Program.wifi.ForceSocketsTls = false;
+                        protocol = "http";
+                    }
+                    else
+                    {
+                        Program.wifi.SetTlsServerRootCertificate(Resources.GetBytes(Resources.BinaryResources.BaltimoreCyberTrustRoot));
+                        //Program.wifi.SetTlsServerRootCertificate(Resources.GetBytes(Resources.BinaryResources.DigiCert_Baltimore_Root));
+                        Program.wifi.ForceSocketsTls = true;
+                        protocol = "https";
+                    }
+                                       
                     int port = protocol == "https" ? 443 : 80;
                     SPWF04SxConnectionSecurityType securityType = protocol == "https" ? SPWF04SxConnectionSecurityType.Tls : SPWF04SxConnectionSecurityType.None;
 
 
-                    
-                   // string theControl = Program.wifi.PrintFile("httprequest01.requ");
+                    //Program.wifi.ForceSocketsTls = true;
+                    Program.wifi.ForceSocketsTls = false;
+
+                    string commonName = "*.table.core.windows.net";
+                    Program.wifi.ForceSocketsTlsCommonName = commonName;
+
+
+
+                    // string theControl = Program.wifi.PrintFile("httprequest01.requ");
 
                     //string path = "/Refrigerator2019()?$top=1";
 
@@ -238,17 +260,15 @@ namespace RoSchmi.Net.Azure.Storage
                      string fileContent = Program.wifi.PrintFile("httpresponse01.resp");
 
                     */
-                     
 
-                    // funktioniert,  
-                    Program.wifi.SetTlsServerRootCertificate(Resources.GetBytes(Resources.BinaryResources.BaltimoreCyberTrustRoot));
-                    //url = "/Refrigerator2018()?$top=1";
-                    Program.wifi.ForceSocketsTls = true;
-                    string commonName = "*.table.core.windows.net";
-                    Program.wifi.ForceSocketsTlsCommonName = commonName;
 
-                   
-                    
+
+
+
+
+
+
+
 
 
                     DateTime start = DateTime.UtcNow;
@@ -256,14 +276,16 @@ namespace RoSchmi.Net.Azure.Storage
 
                     
                     int timeCtr = 0;
-                    int loopLimit = 10;
+                    int loopLimit = 15;     // max 15 retries
                     do
                     {
                         long totalMemory = GC.GetTotalMemory(true);
                         Debug.WriteLine("Total Memory: " + totalMemory.ToString());
 
-                        //id = Program.wifi.OpenSocket("prax47.table.core.windows.net", 443, SPWF04SxConnectionType.Tcp, securityType, "*.table.core.windows.net");
-                        id = Program.wifi.OpenSocket(url.Host, 443, SPWF04SxConnectionType.Tcp, securityType, "*.table.core.windows.net");
+                       
+                        //id = Program.wifi.OpenSocket(url.Host, port, SPWF04SxConnectionType.Tcp, securityType, "*.table.core.windows.net");
+                        id = Program.wifi.OpenSocket(url.Host, port, SPWF04SxConnectionType.Tcp, securityType);
+
                         start = DateTime.UtcNow;
                         Thread.Sleep(10);
 
@@ -323,17 +345,19 @@ namespace RoSchmi.Net.Azure.Storage
                         Program.wifi.CloseSocket(id);
                         lastBuf = new byte[0];
 
-                        byte[] searchSequence = { 72, 84, 84, 80, 47, 49, 46, 49, 32}; // means: HTTP/1.1_
-                        var searcher = new BoyerMoore(searchSequence);
-                        int[] foundIdxArray = searcher.Search(totalBuf, true);
+                    
+                   
+
+                    byte[] searchSequence = { 72, 84, 84, 80, 47, 49, 46, 49, 32}; // means: HTTP/1.1_
+                    var searcher = new BoyerMoore(searchSequence);
+                    int[] foundIdxArray = searcher.Search(totalBuf, true);
 
 
-                        string httpStatCode = "300";
-                        if (total > 12)
-                        { 
-                            httpStatCode = Encoding.UTF8.GetString(totalBuf, foundIdxArray[0] + 9, 3);
-                        }
-                       
+                    //extract httpStatusCode 
+                    string httpStatCode = total > 12 ? Encoding.UTF8.GetString(totalBuf, foundIdxArray[0] + 9, 3) : "300";
+
+
+
 
                     if (total > 2)
                     {
@@ -355,12 +379,120 @@ namespace RoSchmi.Net.Azure.Storage
                         catch { }
                     }
 
+                    
+
+                    // get ETag
+                    if (total > 5)
+                    {                    
+                        searchSequence = Encoding.UTF8.GetBytes("ETag:");
+                        searcher = new BoyerMoore(searchSequence);
+                        foundIdxArray = searcher.Search(totalBuf, true);
+                        if ((foundIdxArray.Length > 0) &&  totalBuf.Length > (foundIdxArray[0] + 6))
+                        {
+                            
+                            int startOfETag = foundIdxArray[0] + 6;
+                            int endOfETag = startOfETag;
+                            while ((endOfETag + 1 < totalBuf.Length) && (totalBuf[endOfETag] != 0x0D) && (totalBuf[endOfETag +1] != 0x0A) )
+                            {
+                                endOfETag++;
+                            }
+                            _responseHeader_ETag = Encoding.UTF8.GetString(totalBuf, startOfETag, endOfETag - startOfETag);
+                        }
+                        var dummy79 = 1;
+                    }
+
+                    string contLength = "0";
+
+                    // get Content-Length
+                    /*
+                    if (total > 4)
+                    {
+                        searchSequence = Encoding.UTF8.GetBytes("Content-Length:");
+                        searcher = new BoyerMoore(searchSequence);
+                        foundIdxArray = searcher.Search(totalBuf, false);
+                        if ((foundIdxArray.Length > 0) && totalBuf.Length > (foundIdxArray[0] + 15))
+                        {
+
+                            int startOfETag = foundIdxArray[0] + 15;
+                            int endOfETag = startOfETag;
+                            while ((endOfETag + 1 < totalBuf.Length) && (totalBuf[endOfETag] != 0x0D) && (totalBuf[endOfETag + 1] != 0x0A))
+                            {
+                                endOfETag++;
+                            }
+                            contLength = Encoding.UTF8.GetString(totalBuf, startOfETag, endOfETag - startOfETag);
+                            var dummy321 = 1;
+                        }
+
+                    }
+                    */
+
+                    
+                        if (total > 4)
+                    {
+                        
+                        searchSequence = new byte[] { 0x0D, 0x0A, 0x0D, 0x0A };
+                        searcher = new BoyerMoore(searchSequence);
+                        foundIdxArray = searcher.Search(totalBuf, false);
+
+                        
+
+                        int startOfLength = foundIdxArray[0] + 4;
+                        if ((startOfLength + 4) < totalBuf.Length)
+                        {
+                            int endOfLength = startOfLength;
+                            while ((endOfLength + 1 < totalBuf.Length) && (totalBuf[endOfLength] != 0x0D) && (totalBuf[endOfLength + 1] != 0x0A))
+                            {
+                                endOfLength++;
+                            }
+
+                            int startOfBody = endOfLength + 2;
+
+                            try
+                            {
+                                responseBody = Encoding.UTF8.GetString(totalBuf, startOfBody, totalBuf.Length - startOfBody);
+                            }
+                            catch (Exception ex)
+                            {
+                                var dummy7656 = ex.Message;
+                            }
+
+                            Debug.WriteLine(responseBody);
+
+                        }
+
+                        /*
+                        byte[] bodyLengthArray = new byte[4];
+                        int startPos = 4 - (endOfLength - startOfLength);
+                        Array.Copy(totalBuf, startOfLength, bodyLengthArray, startPos, endOfLength - startOfLength);
+
+                        byte[] reversedArray = new byte[4];
+
+                        for (int i = 0; i < 4; i++)
+                        {
+                            reversedArray[i] = bodyLengthArray[3 - i];
+                        }
+
+                        var bodyLength = BitConverter.ToInt32(reversedArray, 0);
+                        
+                        
+
+                        var dummy79 = 1;
+
+                        
+
+                        var result = BitConverter.ToInt32(new byte[4] { 0, 1, 1, 1 }, 0);
+                        */
+
+                        var dummy78 = 1;
+
+                    }
+                    
 
 
 
-                      //  string theResult = Encoding.UTF8.GetString(totalBuf);
+                    //  string theResult = Encoding.UTF8.GetString(totalBuf);
 
-                        totalBuf = new Byte[0];
+                    totalBuf = new Byte[0];
                         
                     //WaitForButton();
                     //cont = false;
@@ -379,66 +511,7 @@ namespace RoSchmi.Net.Azure.Storage
                         Program.wifi.CloseSocket(id);
 
                     
-                        Thread.Sleep(30);
-
-
-
-
-
-                    //  var id = Program.wifi.OpenSocket(host, port, SPWF04SxConnectionType.Tcp, securityType, "*.table.core.windows.net");
-
-                    // var id = Program.wifi.OpenSocket(host, port, SPWF04SxConnectionType.Tcp, SPWF04SxConnectionSecurityType.Tls, "*.table.core.windows.net");
-
-
-
-                    //  Program.wifi.WriteSocket(id, Encoding.UTF8.GetBytes($"POST prax47.table.core.windows.net/Tables() HTTP/1.1\r\n\r\n <Hallo> </Hallo>"));
-
-
-
-
-                    /*
-                    private static void TestSocket(string host, string url, int port, SPWF04SxConnectionType connectionType, SPWF04SxConnectionSecurityType connectionSecurity, string commonName = null)
-                    {
-                        var buffer = new byte[512];
-                        var id = wifi.OpenSocket(host, port, connectionType, connectionSecurity, commonName);
-                        var cont = true;
-
-                        while (cont)
-                        {
-                            var start = DateTime.UtcNow;
-
-                            wifi.WriteSocket(id, Encoding.UTF8.GetBytes($"GET {url} HTTP/1.1\r\nHost: {host}\r\n\r\n"));
-
-                            Thread.Sleep(100);
-                            var total = 0;
-
-                            var first = true;
-
-                            while ((wifi.QuerySocket(id) is var avail && avail > 0) || first || total < 120)
-                            {
-                                if (avail > 0)
-                                {
-                                    first = false;
-                                    var read = wifi.ReadSocket(id, buffer, 0, Math.Min(avail, buffer.Length));
-                                    total += read;
-                                    Debugger.Log(0, "", Encoding.UTF8.GetString(buffer, 0, read));
-                                }
-                                Thread.Sleep(100);
-                            }
-                            Debug.WriteLine($"\r\nRead: {total:N0} in {(DateTime.UtcNow - start).TotalMilliseconds:N0}ms");
-                            WaitForButton();
-                        }
-                        wifi.CloseSocket(id);
-                    }
-                    */
-
-
-
-
-
-
-
-
+                      //  Thread.Sleep(30);                 
                     /*
                     int httpResult = Program.wifi.SendHttpPost(host, "/Tables()", port, SPWF04SxConnectionSecurityType.Tls, "httpresponse01.resp", "httprequest01.requ", requestBinary);
                     buffer = new byte[50];
@@ -465,6 +538,11 @@ namespace RoSchmi.Net.Azure.Storage
 
                     switch (httpStatCode)
                     {
+                        case "200":
+                            {
+                                responseStatusCode = HttpStatusCode.OK;
+                            }
+                            break;
                         case "204":
                             {
                                 responseStatusCode = HttpStatusCode.NoContent;
@@ -475,9 +553,30 @@ namespace RoSchmi.Net.Azure.Storage
                                 responseStatusCode = HttpStatusCode.Ambiguous;
                             }
                             break;
+                        case "400":
+                            {
+                                responseStatusCode = HttpStatusCode.BadRequest;
+                            }
+                            break;
+                        case "403":
+                            {
+                                responseStatusCode = HttpStatusCode.Forbidden;
+                            }
+                            break;
+                        case "404":
+                            {
+                                responseStatusCode = HttpStatusCode.NotFound;
+                            }
+                            break;
+
                         case "409":
                             {
                                 responseStatusCode = HttpStatusCode.Conflict;
+                            }
+                            break;
+                        default:
+                            {
+                                responseStatusCode = HttpStatusCode.Ambiguous;
                             }
                             break;
                     }

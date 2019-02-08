@@ -1025,6 +1025,12 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                                         Debug.WriteLine("Indication: " + ind.ToString("X2") + " PayLoad = " + payloadLength.ToString());
                                     }
                                     break;
+                                case 0x41:  // dez 65 DNS Address Failure
+                                    {
+                                        // Seen after WiFi disassociation
+                                        Debug.WriteLine("Indication: " + ind.ToString("X2") + " PayLoad = " + payloadLength.ToString());
+                                    }
+                                    break;
 
                                 case 0x4A:   // dez 77 failed to open socket  // Certificate error
                                     {

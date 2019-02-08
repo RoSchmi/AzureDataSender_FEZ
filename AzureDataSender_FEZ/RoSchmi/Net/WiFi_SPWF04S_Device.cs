@@ -7,6 +7,7 @@ using System.Net.NetworkInterface;
 using System.Net;
 using System.Security.Cryptography.X509Certificates;
 using GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx;
+using RoSchmi.Interfaces;
 
 
 namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
@@ -14,6 +15,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
     class WiFi_SPWF04S_Device
     {
         private static SPWF04SxInterfaceRoSchmi wiFiSPWF04S;
+        //private static ISPWF04SxInterface wiFiSPWF04S;
 
         private static NetworkInterface networkInterface;
 
@@ -30,6 +32,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
 
         public WiFi_SPWF04S_Device(SPWF04SxInterfaceRoSchmi pWiFiSPWF04S, string pWifiSSID, string pWifiKey)
+        //public WiFi_SPWF04S_Device(ISPWF04SxInterface pWiFiSPWF04S, string pWifiSSID, string pWifiKey)
         {
             wiFiSPWF04S = pWiFiSPWF04S;
             wiFiSSID = pWifiSSID;
@@ -38,6 +41,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
         public void Initialize()
         {
+            
             wiFiSPWF04S.IndicationReceived += WiFiSPWF04S_IndicationReceived;   //  (s, e) => { Debug.WriteLine($"WIND: {WindToName(e.Indication)} {e.Message}"); this.resetEventWiFiConnected.Set();};
 
             wiFiSPWF04S.ErrorReceived += (s, e) => Debug.WriteLine($"ERROR: {e.Error} {e.Message}");

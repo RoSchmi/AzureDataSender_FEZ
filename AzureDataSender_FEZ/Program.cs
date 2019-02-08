@@ -24,6 +24,7 @@ using RoSchmi.DayLightSavingTime;
 using GHIElectronics.TinyCLR.Native;
 using PervasiveDigital.Utilities;
 using AzureDataSender.Models;
+using RoSchmi.Interfaces;
 
 
 
@@ -63,13 +64,14 @@ namespace AzureDataSender_FEZ
 
 
 
-        private static bool AnalogCloudTableExists = false;
+        
+        private static int AnalogCloudTableYear = 1900;
 
        // private static DataContainer dataContainer = new DataContainer(new TimeSpan(0, 15, 0));
 
         private static int _azureSendThreads = 0;
 
-       // private static AzureSendManager myAzureSendManager;
+      
 
         // Set the name of the table for analog values (name must be conform to special rules: see Azure)
 
@@ -118,10 +120,11 @@ namespace AzureDataSender_FEZ
 
         //private static GpioPin led1;
 
-        
+
 
         //private static SPWF04SxInterface wifi;
         public static SPWF04SxInterfaceRoSchmi  wifi;
+        //public static ISPWF04SxInterface wifi;
 
 
         private static WiFi_SPWF04S_Device wiFi_SPWF04S_Device;
@@ -173,6 +176,8 @@ namespace AzureDataSender_FEZ
         
             var cont = GpioController.GetDefault();
 
+            
+
             //FEZ
             var reset = cont.OpenPin(FEZ.GpioPin.WiFiReset);
 
@@ -184,9 +189,9 @@ namespace AzureDataSender_FEZ
             var scont = SpiController.FromName(FEZ.SpiBus.WiFi);
             
             var spi = scont.GetDevice(SPWF04SxInterfaceRoSchmi.GetConnectionSettings(SpiChipSelectType.Gpio, FEZ.GpioPin.WiFiChipSelect));
-              
-           
-           
+
+            //var spi = scont.GetDevice(ISPWF04SxInterface.GetConnectionSettings(SpiChipSelectType.Gpio, FEZ.GpioPin.WiFiChipSelect));
+
 
             wifi = new SPWF04SxInterfaceRoSchmi(spi, irq, reset);
          
@@ -477,11 +482,9 @@ namespace AzureDataSender_FEZ
             while (true)
             {
                 Thread.Sleep(100);
-            }
-
-
-                
+            }              
         }
+        #endregion
 
         private static void WiFi_SPWF04S_Device_PendingSocketData(WiFi_SPWF04S_Device sender, WiFi_SPWF04S_Device.PendingDataEventArgs e)
         {
@@ -492,7 +495,7 @@ namespace AzureDataSender_FEZ
         {
             AzureStorageHelper.SocketWasClosed = e.SocketIsClosed;
         }
-        #endregion
+        
 
 
         //     *************************************   Event writeAnalogToCloudTimer_tick     *******************************************************
@@ -503,7 +506,7 @@ namespace AzureDataSender_FEZ
         private static void writeAnalogToCloudTimer_tick(object state)
         {
 
-            writeAnalogToCloudTimer.Change(10 * 60 * 1000, 10 * 60 * 1000);
+            writeAnalogToCloudTimer.Change(10 * 60 * 1000, 10 * 60 * 1000);    // Set to a long interval, so will not fire again before completed
 
             bool validStorageAccount = false;
 
@@ -530,28 +533,27 @@ namespace AzureDataSender_FEZ
 
             }
             */
-
-                     
-
-            bool Azure_useHTTPS = true;
-
+                   
 
             myCloudStorageAccount = new CloudStorageAccount(storageAccountName, storageKey, useHttps: Azure_useHTTPS);
 
+            int yearOfSend = DateTime.Now.Year;
+
+            #region Region Create analogTable if not exists
             HttpStatusCode resultTableCreate = HttpStatusCode.Ambiguous;
-            if (!AnalogCloudTableExists)
+            if (AnalogCloudTableYear != yearOfSend)
             {
-                resultTableCreate = createTable(myCloudStorageAccount, analogTableName);
+                resultTableCreate = createTable(myCloudStorageAccount, analogTableName + DateTime.Today.Year.ToString());
             }
 
-            
-               
-                if ((resultTableCreate == HttpStatusCode.Created) || (resultTableCreate == HttpStatusCode.NoContent) || (resultTableCreate == HttpStatusCode.Conflict))
-                {
-                    AnalogCloudTableExists = true;
-                }
+            if ((resultTableCreate == HttpStatusCode.Created) || (resultTableCreate == HttpStatusCode.NoContent) || (resultTableCreate == HttpStatusCode.Conflict))
+            {
+                AnalogCloudTableYear = yearOfSend;
+            }
+            #endregion
 
-                var dummy56 = 1;
+
+            var dummy56 = 1;
                 
           
 
@@ -563,8 +565,7 @@ namespace AzureDataSender_FEZ
 
 
 
-            // Populate Analog Table with Sinus Curve values for the actual day
-            // cloudTable = tableClient.GetTableReference(TextBox_AnalogTable.Text + DateTime.Today.Year);
+            
            
 
             DateTime actDate = DateTime.Now;
@@ -572,281 +573,304 @@ namespace AzureDataSender_FEZ
 
 
 
-            // formatting the RowKey (= revereDate) this way to have the tables sorted with last added row upmost
+            // formatting the RowKey (= reverseDate) this way to have the tables sorted with last added row upmost
             string reverseDate = (10000 - actDate.Year).ToString("D4") + (12 - actDate.Month).ToString("D2") + (31 - actDate.Day).ToString("D2")
                        + (23 - actDate.Hour).ToString("D2") + (59 - actDate.Minute).ToString("D2") + (59 - actDate.Second).ToString("D2");
 
+
+
             string sampleTime = actDate.Month.ToString("D2") + "/" + actDate.Day.ToString("D2") + "/" + actDate.Year + " " + actDate.Hour.ToString("D2") + ":" + actDate.Minute.ToString("D2") + ":" + actDate.Second.ToString("D2");
 
-
+            // Populate Analog Table with values for the actual day
             ArrayList propertiesAL = AnalogTablePropertiesAL.AnalogPropertiesAL(sampleTime, 10.1, 20.2, 30.3, 40.4);
 
             AnalogTableEntity analogTableEntity = new AnalogTableEntity(partitionKey, reverseDate, propertiesAL);
 
             string insertEtag = string.Empty;
                 
-            HttpStatusCode insertResult = insertTableEntity(myCloudStorageAccount, analogTableName, analogTableEntity, out insertEtag);
-
-
-            /*
-            string[] propertyNames = new string[4] { Analog_1.Text, Analog_2.Text, Analog_3.Text, Analog_4.Text };
-            Dictionary<string, EntityProperty> entityDictionary = new Dictionary<string, EntityProperty>();
-
-
-            string sampleTime = actDate.Month.ToString("D2") + "/" + actDate.Day.ToString("D2") + "/" + actDate.Year + " " + actDate.Hour.ToString("D2") + ":" + actDate.Minute.ToString("D2") + ":" + actDate.Second.ToString("D2");
-            //string sampleTime = actDate.ToString("MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture);
-
-            entityDictionary.Add("SampleTime", EntityProperty.GeneratePropertyForString(sampleTime));
-            for (int i = 1; i < 5; i++)
-            {
-                double measuredValue = dataContainer.GetAnalogValueSet(i).MeasureValue;
-                // limit measured values to the allowed range of -40.0 to +140.0, exception: 999.9 (not valid value)
-                if ((measuredValue < 999.89) || (measuredValue > 999.91))  // want to be careful with decimal numbers
-                {
-                    measuredValue = (measuredValue < -40.0) ? -40.0 : (measuredValue > 140.0 ? 140.0 : measuredValue);
-                }
-                else
-                {
-                    measuredValue = 999.9;
-                }
-
-                entityDictionary.Add(propertyNames[i - 1], EntityProperty.GeneratePropertyForString(measuredValue.ToString("f1", System.Globalization.CultureInfo.InvariantCulture)));
-            }
-
-            //DynamicTableEntity sendEntity = new DynamicTableEntity(partitionKey, reverseDate, null, entityDictionary);
-
-            //DynamicTableEntity dynamicTableEntity = await Common.InsertOrMergeEntityAsync(cloudTable, sendEntity);
-            */
-
-            #region Write new row to the buffer
-
-            bool forceSend = true;
-
-            // RoSchmi  tochange
-            //SampleValue theRow = new SampleValue(partitionKey, DateTime.Now.AddMinutes(RoSchmi.DayLightSavingTime.DayLightSavingTime.DayLightTimeOffset(dstStart, dstEnd, dstOffset, DateTime.Now, true)), 10.1, 10.2, 10.3, 10.4, forceSend);
-
-            //SampleValue theRow = new SampleValue(partitionKey, DateTime.Now.AddMinutes(0), 10.1, 10.2, 10.3, 10.4, forceSend);
-
-            /*
-            SampleValue theRow = new SampleValue(partitionKey, DateTime.Now.AddMinutes(RoSchmi.DayLihtSavingTime.DayLihtSavingTime.DayLightTimeOffset(dstStart, dstEnd, dstOffset, DateTime.Now, true)), RoundedDecTempDiv10, _dayMin, _dayMax,
-                    _sensorValueArr_Out[Ch_1_Sel - 1].TempDouble, _sensorValueArr_Out[Ch_1_Sel - 1].RandomId, _sensorValueArr_Out[Ch_1_Sel - 1].Hum, _sensorValueArr_Out[Ch_1_Sel - 1].BatteryIsLow,
-                    _sensorValueArr_Out[Ch_2_Sel - 1].TempDouble, _sensorValueArr_Out[Ch_2_Sel - 1].RandomId, _sensorValueArr_Out[Ch_2_Sel - 1].Hum, _sensorValueArr_Out[Ch_2_Sel - 1].BatteryIsLow,
-                    _sensorValueArr_Out[Ch_3_Sel - 1].TempDouble, _sensorValueArr_Out[Ch_3_Sel - 1].RandomId, _sensorValueArr_Out[Ch_3_Sel - 1].Hum, _sensorValueArr_Out[Ch_3_Sel - 1].BatteryIsLow,
-                    _sensorValueArr_Out[Ch_4_Sel - 1].TempDouble, _sensorValueArr_Out[Ch_4_Sel - 1].RandomId, _sensorValueArr_Out[Ch_4_Sel - 1].Hum, _sensorValueArr_Out[Ch_4_Sel - 1].BatteryIsLow,
-                    _sensorValueArr_Out[Ch_5_Sel - 1].TempDouble, _sensorValueArr_Out[Ch_5_Sel - 1].RandomId, _sensorValueArr_Out[Ch_5_Sel - 1].Hum, _sensorValueArr_Out[Ch_5_Sel - 1].BatteryIsLow,
-                    _sensorValueArr_Out[Ch_6_Sel - 1].TempDouble, _sensorValueArr_Out[Ch_6_Sel - 1].RandomId, _sensorValueArr_Out[Ch_6_Sel - 1].Hum, _sensorValueArr_Out[Ch_6_Sel - 1].BatteryIsLow,
-                    _sensorValueArr_Out[Ch_7_Sel - 1].TempDouble, _sensorValueArr_Out[Ch_7_Sel - 1].RandomId, _sensorValueArr_Out[Ch_7_Sel - 1].Hum, _sensorValueArr_Out[Ch_7_Sel - 1].BatteryIsLow,
-                    _sensorValueArr_Out[Ch_8_Sel - 1].TempDouble, _sensorValueArr_Out[Ch_8_Sel - 1].RandomId, _sensorValueArr_Out[Ch_8_Sel - 1].Hum, _sensorValueArr_Out[Ch_8_Sel - 1].BatteryIsLow,
-                    actCurrent, switchState, _location, timeFromLastSend, 0, _iteration, remainingRam, _forcedReboots, _badReboots, _azureSendErrors, willReboot ? 'X' : '.', forceSend, forceSend ? switchMessage : "");
-            */
-
-            /*
-            if (AzureSendManager.hasFreePlaces())
-            {
-                AzureSendManager.EnqueueSampleValue(theRow);
-                //Debug.Print("\r\nRow was writen to the Buffer. Number of rows in the buffer = " + AzureSendManager.Count + " " + (AzureSendManager.capacity - AzureSendManager.Count).ToString() + " places free");
-            }
-            // optionally send message to Debug.Print  *****************************************************
-            SampleValue theReturn = AzureSendManager.PreViewNextSampleValue();
-            */
-
-
-            //DateTime thatTime = theReturn.TimeOfSample;
-            //double thatDouble = theReturn.TheSampleValue;
-
-
-            // *********************************************************************************************
-
-
-            #endregion
-
-            
-
-
-
-
-           // _azureSendThreads++;
-
-
-            //bool Azure_useHTTPS = true;
-
-          //  #region Send contents of the buffer to Azure
-
-            // myAzureSendManager = new AzureSendManager(myCloudStorageAccount, analogTableName, _sensorValueHeader, _socketSensorHeader, caCerts, _timeOfLastSend, sendInterval, _azureSends, _AzureDebugMode, _AzureDebugLevel, IPAddress.Parse(fiddlerIPAddress), pAttachFiddler: attachFiddler, pFiddlerPort: fiddlerPort, pUseHttps: Azure_useHTTPS);
-            // myAzureSendManager.AzureCommandSend += MyAzureSendManager_AzureCommandSend;
-
-            // myAzureSendManager.Start();
-
-
-
-
-
-
-
-
-            //CloudTableClient tableClient = storageAccount.CreateCloudTableClient();
-
-            // Create analog table if not existing           
-
-            //CloudTable cloudTable = tableClient.GetTableReference(analogTableName + DateTime.Today.Year);
-
-
-            //DateTime timeZoneCorrectedDateTime = DateTime.Now.AddMinutes(timeZoneOffset);
-
-
-
-            // actDateTime is corrected for timeZoneOffset and DayLightSavingTime
-
-            //DateTime actDateTime = timeZoneCorrectedDateTime.AddMinutes(GetDlstOffset(timeZoneCorrectedDateTime));
-
-
-
-            //int timeZoneAndDlstCorrectedYear = timeZoneAndDlstCorrectedDateTime.Year;
-
-            //CloudTable cloudTable = tableClient.GetTableReference(analogTableName + DateTime.Today.AddMinutes(timeZoneOffset).AddMinutes(GetDlstOffset()).Year);
-
-            // CloudTable cloudTable = tableClient.GetTableReference(analogTableName + actDateTime.Year);
-
-
-            /*
-            if (!AnalogCloudTableExists)
-            {
-                try
-                {
-                   // await cloudTable.CreateIfNotExistsAsync();
-
-                    AnalogCloudTableExists = true;
-
-                }
-
-                catch
-
-                {
-
-                  //  Debug.WriteLine("Could not create Analog Table with name: \r\n" + cloudTable.Name + "\r\nCheck your Internet Connection.\r\nAction aborted.");
-
-
-
-                    writeAnalogToCloudTimer.Change(writeToCloudInterval * 1000, 30 * 60 * 1000);
-
-                    return;
-
-                }
-
-            }
-            */
-
-
-
-
-            // Populate Analog Table with Sinus Curve values for the actual day
-
-            // cloudTable = tableClient.GetTableReference(analogTableName + DateTime.Today.Year);
-
-
-
-            // cloudTable = tableClient.GetTableReference(analogTableName + actDateTime.Year);
-
-
-
-
-
-
-
-            // formatting the PartitionKey this way to have the tables sorted with last added row upmost
-
-            // string partitionKey = analogTablePartPrefix + actDateTime.Year + "-" + (12 - actDateTime.Month).ToString("D2");
-
-
-
-            // formatting the RowKey (= revereDate) this way to have the tables sorted with last added row upmost
-            /*
-            string reverseDate = (10000 - actDateTime.Year).ToString("D4") + (12 - actDateTime.Month).ToString("D2") + (31 - actDateTime.Day).ToString("D2")
-                       + (23 - actDateTime.Hour).ToString("D2") + (59 - actDateTime.Minute).ToString("D2") + (59 - actDateTime.Second).ToString("D2");
-            */
-
-
-            //string[] propertyNames = new string[4] { analog_Property_1, analog_Property_2, analog_Property_3, analog_Property_4 };
-
-            // Dictionary<string, EntityProperty> entityDictionary = new Dictionary<string, EntityProperty>();
-
-            //string sampleTime = actDateTime.Month.ToString("D2") + "/" + actDateTime.Day.ToString("D2") + "/" + actDateTime.Year + " " + actDateTime.Hour.ToString("D2") + ":" + actDateTime.Minute.ToString("D2") + ":" + actDateTime.Second.ToString("D2");
-
-            //string sampleTime = actDate.Month.ToString("D2") + "/" + actDate.Day.ToString("D2") + "/" + actDate.Year + " " + actDate.Hour.ToString("D2") + ":" + actDate.Minute.ToString("D2") + ":" + actDate.Second.ToString("D2");
-
-            //string sampleTime = actDateTime.ToString("MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture);
-
-
-
-            // entityDictionary.Add("SampleTime", EntityProperty.GeneratePropertyForString(sampleTime));
-
-            /*
-            for (int i = 1; i < 5; i++)
-
-            {
-
-                double measuredValue = dataContainer.GetAnalogValueSet(i).MeasureValue;
-
-                // limit measured values to the allowed range of -40.0 to +140.0, exception: 999.9 (not valid value)
-
-                if ((measuredValue < 999.89) || (measuredValue > 999.91))  // want to be careful with decimal numbers
-
-                {
-
-                    measuredValue = (measuredValue < -40.0) ? -40.0 : (measuredValue > 140.0 ? 140.0 : measuredValue);
-
-                }
-
-                else
-
-                {
-
-                    measuredValue = 999.9;
-
-                }
-
-
-
-               // entityDictionary.Add(propertyNames[i - 1], EntityProperty.GeneratePropertyForString(measuredValue.ToString("f1", System.Globalization.CultureInfo.InvariantCulture)));
-
-            }
-            */
-
-            // DynamicTableEntity sendEntity = new DynamicTableEntity(partitionKey, reverseDate, null, entityDictionary);
-
-
-
-            //  DynamicTableEntity dynamicTableEntity = await Common.InsertOrMergeEntityAsync(cloudTable, sendEntity);
-
-
-
-            // Set timer to fire again
+            HttpStatusCode insertResult = insertTableEntity(myCloudStorageAccount, analogTableName + yearOfSend.ToString(), analogTableEntity, out insertEtag);
 
 
             // do not delete
-            // ArrayList theQuery = new ArrayList();
-            // HttpStatusCode resultQuery = queryTableEntities(myCloudStorageAccount, "mypeople", "$top=1", out theQuery);
+            ArrayList queryResult = new ArrayList();
+            HttpStatusCode resultQuery = queryTableEntities(myCloudStorageAccount, analogTableName + yearOfSend.ToString(), "$top=1", out queryResult);
+            var entityHashtable = queryResult[0] as Hashtable;
+            var theRowKey = entityHashtable["RowKey"];
+            var SampleTime = entityHashtable["SampleTime"];
+            Debug.WriteLine("Entity read back from Azure, SampleTime: " + SampleTime);
+         
+            // Debug.WriteLine(GC.GetTotalMemory(true).ToString("N0"));
 
 
-           // AnalogValueSet analogValueSet = new AnalogValueSet(1, DateTime.Now, 10.0);
-
-            //TableEntity tableEntity = new TableEntity(partitionKey, reverseDate);
-
-
-           
-
-          //  HttpStatusCode insertTableEntityResult = insertTableEntity(myCloudStorageAccount, analogTableName, tableEntity, out insertEtag);
-
-
-  
-
-            writeAnalogToCloudTimer.Change(  writeToCloudInterval * 10 * 1000, writeToCloudInterval * 10 * 1000);
+            writeAnalogToCloudTimer.Change(writeToCloudInterval * 10 * 1000, writeToCloudInterval * 10 * 1000);
 
 
 
             //Console.WriteLine("Analog data written to Cloud");
 
         }
+        #endregion
+
+
+        /*
+        string[] propertyNames = new string[4] { Analog_1.Text, Analog_2.Text, Analog_3.Text, Analog_4.Text };
+        Dictionary<string, EntityProperty> entityDictionary = new Dictionary<string, EntityProperty>();
+
+
+        string sampleTime = actDate.Month.ToString("D2") + "/" + actDate.Day.ToString("D2") + "/" + actDate.Year + " " + actDate.Hour.ToString("D2") + ":" + actDate.Minute.ToString("D2") + ":" + actDate.Second.ToString("D2");
+        //string sampleTime = actDate.ToString("MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture);
+
+        entityDictionary.Add("SampleTime", EntityProperty.GeneratePropertyForString(sampleTime));
+        for (int i = 1; i < 5; i++)
+        {
+            double measuredValue = dataContainer.GetAnalogValueSet(i).MeasureValue;
+            // limit measured values to the allowed range of -40.0 to +140.0, exception: 999.9 (not valid value)
+            if ((measuredValue < 999.89) || (measuredValue > 999.91))  // want to be careful with decimal numbers
+            {
+                measuredValue = (measuredValue < -40.0) ? -40.0 : (measuredValue > 140.0 ? 140.0 : measuredValue);
+            }
+            else
+            {
+                measuredValue = 999.9;
+            }
+
+            entityDictionary.Add(propertyNames[i - 1], EntityProperty.GeneratePropertyForString(measuredValue.ToString("f1", System.Globalization.CultureInfo.InvariantCulture)));
+        }
+
+        //DynamicTableEntity sendEntity = new DynamicTableEntity(partitionKey, reverseDate, null, entityDictionary);
+
+        //DynamicTableEntity dynamicTableEntity = await Common.InsertOrMergeEntityAsync(cloudTable, sendEntity);
+        */
+
+        //#region Write new row to the buffer
+
+        //bool forceSend = true;
+
+        // RoSchmi  tochange
+        //SampleValue theRow = new SampleValue(partitionKey, DateTime.Now.AddMinutes(RoSchmi.DayLightSavingTime.DayLightSavingTime.DayLightTimeOffset(dstStart, dstEnd, dstOffset, DateTime.Now, true)), 10.1, 10.2, 10.3, 10.4, forceSend);
+
+        //SampleValue theRow = new SampleValue(partitionKey, DateTime.Now.AddMinutes(0), 10.1, 10.2, 10.3, 10.4, forceSend);
+
+        /*
+        SampleValue theRow = new SampleValue(partitionKey, DateTime.Now.AddMinutes(RoSchmi.DayLihtSavingTime.DayLihtSavingTime.DayLightTimeOffset(dstStart, dstEnd, dstOffset, DateTime.Now, true)), RoundedDecTempDiv10, _dayMin, _dayMax,
+                _sensorValueArr_Out[Ch_1_Sel - 1].TempDouble, _sensorValueArr_Out[Ch_1_Sel - 1].RandomId, _sensorValueArr_Out[Ch_1_Sel - 1].Hum, _sensorValueArr_Out[Ch_1_Sel - 1].BatteryIsLow,
+                _sensorValueArr_Out[Ch_2_Sel - 1].TempDouble, _sensorValueArr_Out[Ch_2_Sel - 1].RandomId, _sensorValueArr_Out[Ch_2_Sel - 1].Hum, _sensorValueArr_Out[Ch_2_Sel - 1].BatteryIsLow,
+                _sensorValueArr_Out[Ch_3_Sel - 1].TempDouble, _sensorValueArr_Out[Ch_3_Sel - 1].RandomId, _sensorValueArr_Out[Ch_3_Sel - 1].Hum, _sensorValueArr_Out[Ch_3_Sel - 1].BatteryIsLow,
+                _sensorValueArr_Out[Ch_4_Sel - 1].TempDouble, _sensorValueArr_Out[Ch_4_Sel - 1].RandomId, _sensorValueArr_Out[Ch_4_Sel - 1].Hum, _sensorValueArr_Out[Ch_4_Sel - 1].BatteryIsLow,
+                _sensorValueArr_Out[Ch_5_Sel - 1].TempDouble, _sensorValueArr_Out[Ch_5_Sel - 1].RandomId, _sensorValueArr_Out[Ch_5_Sel - 1].Hum, _sensorValueArr_Out[Ch_5_Sel - 1].BatteryIsLow,
+                _sensorValueArr_Out[Ch_6_Sel - 1].TempDouble, _sensorValueArr_Out[Ch_6_Sel - 1].RandomId, _sensorValueArr_Out[Ch_6_Sel - 1].Hum, _sensorValueArr_Out[Ch_6_Sel - 1].BatteryIsLow,
+                _sensorValueArr_Out[Ch_7_Sel - 1].TempDouble, _sensorValueArr_Out[Ch_7_Sel - 1].RandomId, _sensorValueArr_Out[Ch_7_Sel - 1].Hum, _sensorValueArr_Out[Ch_7_Sel - 1].BatteryIsLow,
+                _sensorValueArr_Out[Ch_8_Sel - 1].TempDouble, _sensorValueArr_Out[Ch_8_Sel - 1].RandomId, _sensorValueArr_Out[Ch_8_Sel - 1].Hum, _sensorValueArr_Out[Ch_8_Sel - 1].BatteryIsLow,
+                actCurrent, switchState, _location, timeFromLastSend, 0, _iteration, remainingRam, _forcedReboots, _badReboots, _azureSendErrors, willReboot ? 'X' : '.', forceSend, forceSend ? switchMessage : "");
+        */
+
+        /*
+        if (AzureSendManager.hasFreePlaces())
+        {
+            AzureSendManager.EnqueueSampleValue(theRow);
+            //Debug.Print("\r\nRow was writen to the Buffer. Number of rows in the buffer = " + AzureSendManager.Count + " " + (AzureSendManager.capacity - AzureSendManager.Count).ToString() + " places free");
+        }
+        // optionally send message to Debug.Print  *****************************************************
+        SampleValue theReturn = AzureSendManager.PreViewNextSampleValue();
+        */
+
+
+        //DateTime thatTime = theReturn.TimeOfSample;
+        //double thatDouble = theReturn.TheSampleValue;
+
+
+        // *********************************************************************************************
+
+
+        //#endregion
+
+
+
+
+
+
+        // _azureSendThreads++;
+
+
+        //bool Azure_useHTTPS = true;
+
+        //  #region Send contents of the buffer to Azure
+
+        // myAzureSendManager = new AzureSendManager(myCloudStorageAccount, analogTableName, _sensorValueHeader, _socketSensorHeader, caCerts, _timeOfLastSend, sendInterval, _azureSends, _AzureDebugMode, _AzureDebugLevel, IPAddress.Parse(fiddlerIPAddress), pAttachFiddler: attachFiddler, pFiddlerPort: fiddlerPort, pUseHttps: Azure_useHTTPS);
+        // myAzureSendManager.AzureCommandSend += MyAzureSendManager_AzureCommandSend;
+
+        // myAzureSendManager.Start();
+
+
+
+
+
+
+
+
+        //CloudTableClient tableClient = storageAccount.CreateCloudTableClient();
+
+        // Create analog table if not existing           
+
+        //CloudTable cloudTable = tableClient.GetTableReference(analogTableName + DateTime.Today.Year);
+
+
+        //DateTime timeZoneCorrectedDateTime = DateTime.Now.AddMinutes(timeZoneOffset);
+
+
+
+        // actDateTime is corrected for timeZoneOffset and DayLightSavingTime
+
+        //DateTime actDateTime = timeZoneCorrectedDateTime.AddMinutes(GetDlstOffset(timeZoneCorrectedDateTime));
+
+
+
+        //int timeZoneAndDlstCorrectedYear = timeZoneAndDlstCorrectedDateTime.Year;
+
+        //CloudTable cloudTable = tableClient.GetTableReference(analogTableName + DateTime.Today.AddMinutes(timeZoneOffset).AddMinutes(GetDlstOffset()).Year);
+
+        // CloudTable cloudTable = tableClient.GetTableReference(analogTableName + actDateTime.Year);
+
+
+        /*
+        if (!AnalogCloudTableExists)
+        {
+            try
+            {
+               // await cloudTable.CreateIfNotExistsAsync();
+
+                AnalogCloudTableExists = true;
+
+            }
+
+            catch
+
+            {
+
+              //  Debug.WriteLine("Could not create Analog Table with name: \r\n" + cloudTable.Name + "\r\nCheck your Internet Connection.\r\nAction aborted.");
+
+
+
+                writeAnalogToCloudTimer.Change(writeToCloudInterval * 1000, 30 * 60 * 1000);
+
+                return;
+
+            }
+
+        }
+        */
+
+
+
+
+        // Populate Analog Table with Sinus Curve values for the actual day
+
+        // cloudTable = tableClient.GetTableReference(analogTableName + DateTime.Today.Year);
+
+
+
+        // cloudTable = tableClient.GetTableReference(analogTableName + actDateTime.Year);
+
+
+
+
+
+
+
+        // formatting the PartitionKey this way to have the tables sorted with last added row upmost
+
+        // string partitionKey = analogTablePartPrefix + actDateTime.Year + "-" + (12 - actDateTime.Month).ToString("D2");
+
+
+
+        // formatting the RowKey (= revereDate) this way to have the tables sorted with last added row upmost
+        /*
+        string reverseDate = (10000 - actDateTime.Year).ToString("D4") + (12 - actDateTime.Month).ToString("D2") + (31 - actDateTime.Day).ToString("D2")
+                   + (23 - actDateTime.Hour).ToString("D2") + (59 - actDateTime.Minute).ToString("D2") + (59 - actDateTime.Second).ToString("D2");
+        */
+
+
+        //string[] propertyNames = new string[4] { analog_Property_1, analog_Property_2, analog_Property_3, analog_Property_4 };
+
+        // Dictionary<string, EntityProperty> entityDictionary = new Dictionary<string, EntityProperty>();
+
+        //string sampleTime = actDateTime.Month.ToString("D2") + "/" + actDateTime.Day.ToString("D2") + "/" + actDateTime.Year + " " + actDateTime.Hour.ToString("D2") + ":" + actDateTime.Minute.ToString("D2") + ":" + actDateTime.Second.ToString("D2");
+
+        //string sampleTime = actDate.Month.ToString("D2") + "/" + actDate.Day.ToString("D2") + "/" + actDate.Year + " " + actDate.Hour.ToString("D2") + ":" + actDate.Minute.ToString("D2") + ":" + actDate.Second.ToString("D2");
+
+        //string sampleTime = actDateTime.ToString("MM/dd/yyyy HH:mm:ss", CultureInfo.InvariantCulture);
+
+
+
+        // entityDictionary.Add("SampleTime", EntityProperty.GeneratePropertyForString(sampleTime));
+
+        /*
+        for (int i = 1; i < 5; i++)
+
+        {
+
+            double measuredValue = dataContainer.GetAnalogValueSet(i).MeasureValue;
+
+            // limit measured values to the allowed range of -40.0 to +140.0, exception: 999.9 (not valid value)
+
+            if ((measuredValue < 999.89) || (measuredValue > 999.91))  // want to be careful with decimal numbers
+
+            {
+
+                measuredValue = (measuredValue < -40.0) ? -40.0 : (measuredValue > 140.0 ? 140.0 : measuredValue);
+
+            }
+
+            else
+
+            {
+
+                measuredValue = 999.9;
+
+            }
+
+
+
+           // entityDictionary.Add(propertyNames[i - 1], EntityProperty.GeneratePropertyForString(measuredValue.ToString("f1", System.Globalization.CultureInfo.InvariantCulture)));
+
+        }
+        */
+
+        // DynamicTableEntity sendEntity = new DynamicTableEntity(partitionKey, reverseDate, null, entityDictionary);
+
+
+
+        //  DynamicTableEntity dynamicTableEntity = await Common.InsertOrMergeEntityAsync(cloudTable, sendEntity);
+
+
+
+        // Set timer to fire again
+
+
+        // do not delete
+        // ArrayList theQuery = new ArrayList();
+        // HttpStatusCode resultQuery = queryTableEntities(myCloudStorageAccount, "mypeople", "$top=1", out theQuery);
+
+
+        // AnalogValueSet analogValueSet = new AnalogValueSet(1, DateTime.Now, 10.0);
+
+        //TableEntity tableEntity = new TableEntity(partitionKey, reverseDate);
+
+
+
+
+        //  HttpStatusCode insertTableEntityResult = insertTableEntity(myCloudStorageAccount, analogTableName, tableEntity, out insertEtag);
+
+        // Debug.WriteLine(GC.GetTotalMemory(true).ToString("N0"));
+
+
+        //writeAnalogToCloudTimer.Change(  writeToCloudInterval * 10 * 1000, writeToCloudInterval * 10 * 1000);
+
+
+
+        //Console.WriteLine("Analog data written to Cloud");
+
+        // }
 
         #region private method insertTableEntity
         private static HttpStatusCode insertTableEntity(CloudStorageAccount pCloudStorageAccount, string pTable, TableEntity pTableEntity, out string pInsertETag)
@@ -896,7 +920,7 @@ namespace AzureDataSender_FEZ
             //{ table.attachFiddler(true, fiddlerIPAddress, fiddlerPort); }
 
            // HttpStatusCode resultCode = table.QueryTableEntities(tableName, query, TableClient.ContType.applicationIatomIxml, TableClient.AcceptType.applicationIatomIxml, useSharedKeyLite: false);
-            HttpStatusCode resultCode = table.QueryTableEntities(tableName, query, TableClient.ContType.applicationIatomIxml, TableClient.AcceptType.applicationIjson, useSharedKeyLite: false);
+            HttpStatusCode resultCode = table.QueryTableEntities(tableName, query, TableClient.ContType.applicationIatomIxml, TableClient.AcceptType.applicationIatomIxml, useSharedKeyLite: false);
 
             // now we can get the results by reading the properties: table.OperationResponse......
             queryResult = table.OperationResponseQueryList;
@@ -918,7 +942,7 @@ namespace AzureDataSender_FEZ
             Debug.WriteLine("Callback: commant sent");
         }
 
-        #endregion
+      
 
 
 
@@ -1024,44 +1048,9 @@ namespace AzureDataSender_FEZ
 
 
 
-            while (true)
-            {
-                Debug.WriteLine("/r/nWaiting for Press BTN1 (4) to repeat webrequest");
-                WaitForButton();
+            
 
-
-
-                //.NET
-
-                //TestHttp("http://files.ghielectronics.com", "/");
-
-                TestHttp("https://meta.stackexchange.com", "/", "*.stackexchange.com");
-
-                //TestSocket("www.ghielectronics.com", "/robots.txt", 80);
-
-                //TestSocket("meta.stackoverflow.com", "/", 443, "*.stackexchange.com");
-
-
-
-                //WiFi
-
-                // TestHttp("files.ghielectronics.com", "/", 80, SPWF04SxConnectionSecurityType.None, true);
-
-                //TestHttp("www.google.com", "/?gws_rd=ssl", 80, SPWF04SxConnectionSecurityType.None, true);
-
-                //TestHttp("meta.stackexchange.com", "/", 443, SPWF04SxConnectionSecurityType.Tls, true);
-
-                //TestSocket("www.ghielectronics.com", "/robots.txt", 80, SPWF04SxConnectionType.Tcp, SPWF04SxConnectionSecurityType.None);
-
-                //TestSocket("www.ghielectronics.com", "/robots.txt", 443, SPWF04SxConnectionType.Tcp, SPWF04SxConnectionSecurityType.Tls, "*.ghielectronics.com");
-
-                //TestSocket("www.google.com", "/?gws_rd=ssl", 80, SPWF04SxConnectionyType.Tcp, SPWF04SxConnectionSecurityType.None);
-
-                //TestSocket("meta.stackoverflow.com", "/", 443, SPWF04SxConnectionyType.Tcp, SPWF04SxConnectionSecurityType.Tls, "*.stackexchange.com");
-
-
-
-                Debug.WriteLine(GC.GetTotalMemory(true).ToString("N0"));
+               
 
             }
         }
@@ -1149,182 +1138,6 @@ namespace AzureDataSender_FEZ
         */
         #endregion
 
-
-        #region Region WindToName
-        /*
-        private static string WindToName(SPWF04SxIndication wind)
-        {
-            switch (wind)
-            {
-                case SPWF04SxIndication.ConsoleActive: return nameof(SPWF04SxIndication.ConsoleActive);
-
-                case SPWF04SxIndication.PowerOn: return nameof(SPWF04SxIndication.PowerOn);
-
-                case SPWF04SxIndication.Reset: return nameof(SPWF04SxIndication.Reset);
-
-                case SPWF04SxIndication.WatchdogRunning: return nameof(SPWF04SxIndication.WatchdogRunning);
-
-                case SPWF04SxIndication.LowMemory: return nameof(SPWF04SxIndication.LowMemory);
-
-                case SPWF04SxIndication.WiFiHardwareFailure: return nameof(SPWF04SxIndication.WiFiHardwareFailure);
-
-                case SPWF04SxIndication.ConfigurationFailure: return nameof(SPWF04SxIndication.ConfigurationFailure);
-
-                case SPWF04SxIndication.HardFault: return nameof(SPWF04SxIndication.HardFault);
-
-                case SPWF04SxIndication.StackOverflow: return nameof(SPWF04SxIndication.StackOverflow);
-
-                case SPWF04SxIndication.MallocFailed: return nameof(SPWF04SxIndication.MallocFailed);
-
-                case SPWF04SxIndication.RadioStartup: return nameof(SPWF04SxIndication.RadioStartup);
-
-                case SPWF04SxIndication.WiFiPSMode: return nameof(SPWF04SxIndication.WiFiPSMode);
-
-                case SPWF04SxIndication.Copyright: return nameof(SPWF04SxIndication.Copyright);
-
-                case SPWF04SxIndication.WiFiBssRegained: return nameof(SPWF04SxIndication.WiFiBssRegained);
-
-                case SPWF04SxIndication.WiFiSignalLow: return nameof(SPWF04SxIndication.WiFiSignalLow);
-
-                case SPWF04SxIndication.WiFiSignalOk: return nameof(SPWF04SxIndication.WiFiSignalOk);
-
-                case SPWF04SxIndication.BootMessages: return nameof(SPWF04SxIndication.BootMessages);
-
-                case SPWF04SxIndication.KeytypeNotImplemented: return nameof(SPWF04SxIndication.KeytypeNotImplemented);
-
-                case SPWF04SxIndication.WiFiJoin: return nameof(SPWF04SxIndication.WiFiJoin);
-
-                case SPWF04SxIndication.WiFiJoinFailed: return nameof(SPWF04SxIndication.WiFiJoinFailed);
-
-                case SPWF04SxIndication.WiFiScanning: return nameof(SPWF04SxIndication.WiFiScanning);
-
-                case SPWF04SxIndication.ScanBlewUp: return nameof(SPWF04SxIndication.ScanBlewUp);
-
-                case SPWF04SxIndication.ScanFailed: return nameof(SPWF04SxIndication.ScanFailed);
-
-                case SPWF04SxIndication.WiFiUp: return nameof(SPWF04SxIndication.WiFiUp);
-
-                case SPWF04SxIndication.WiFiAssociationSuccessful: return nameof(SPWF04SxIndication.WiFiAssociationSuccessful);
-
-                case SPWF04SxIndication.StartedAP: return nameof(SPWF04SxIndication.StartedAP);
-
-                case SPWF04SxIndication.APStartFailed: return nameof(SPWF04SxIndication.APStartFailed);
-
-                case SPWF04SxIndication.StationAssociated: return nameof(SPWF04SxIndication.StationAssociated);
-
-                case SPWF04SxIndication.DhcpReply: return nameof(SPWF04SxIndication.DhcpReply);
-
-                case SPWF04SxIndication.WiFiBssLost: return nameof(SPWF04SxIndication.WiFiBssLost);
-
-                case SPWF04SxIndication.WiFiException: return nameof(SPWF04SxIndication.WiFiException);
-
-                case SPWF04SxIndication.WiFiHardwareStarted: return nameof(SPWF04SxIndication.WiFiHardwareStarted);
-
-                case SPWF04SxIndication.WiFiNetwork: return nameof(SPWF04SxIndication.WiFiNetwork);
-
-                case SPWF04SxIndication.WiFiUnhandledEvent: return nameof(SPWF04SxIndication.WiFiUnhandledEvent);
-
-                case SPWF04SxIndication.WiFiScan: return nameof(SPWF04SxIndication.WiFiScan);
-
-                case SPWF04SxIndication.WiFiUnhandledIndication: return nameof(SPWF04SxIndication.WiFiUnhandledIndication);
-
-                case SPWF04SxIndication.WiFiPoweredDown: return nameof(SPWF04SxIndication.WiFiPoweredDown);
-
-                case SPWF04SxIndication.HWInMiniAPMode: return nameof(SPWF04SxIndication.HWInMiniAPMode);
-
-                case SPWF04SxIndication.WiFiDeauthentication: return nameof(SPWF04SxIndication.WiFiDeauthentication);
-
-                case SPWF04SxIndication.WiFiDisassociation: return nameof(SPWF04SxIndication.WiFiDisassociation);
-
-                case SPWF04SxIndication.WiFiUnhandledManagement: return nameof(SPWF04SxIndication.WiFiUnhandledManagement);
-
-                case SPWF04SxIndication.WiFiUnhandledData: return nameof(SPWF04SxIndication.WiFiUnhandledData);
-
-                case SPWF04SxIndication.WiFiUnknownFrame: return nameof(SPWF04SxIndication.WiFiUnknownFrame);
-
-                case SPWF04SxIndication.Dot11Illegal: return nameof(SPWF04SxIndication.Dot11Illegal);
-
-                case SPWF04SxIndication.WpaCrunchingPsk: return nameof(SPWF04SxIndication.WpaCrunchingPsk);
-
-                case SPWF04SxIndication.WpaTerminated: return nameof(SPWF04SxIndication.WpaTerminated);
-
-                case SPWF04SxIndication.WpaStartFailed: return nameof(SPWF04SxIndication.WpaStartFailed);
-
-                case SPWF04SxIndication.WpaHandshakeComplete: return nameof(SPWF04SxIndication.WpaHandshakeComplete);
-
-                case SPWF04SxIndication.GpioInterrupt: return nameof(SPWF04SxIndication.GpioInterrupt);
-
-                case SPWF04SxIndication.Wakeup: return nameof(SPWF04SxIndication.Wakeup);
-
-                case SPWF04SxIndication.PendingData: return nameof(SPWF04SxIndication.PendingData);
-
-                case SPWF04SxIndication.InputToRemote: return nameof(SPWF04SxIndication.InputToRemote);
-
-                case SPWF04SxIndication.OutputFromRemote: return nameof(SPWF04SxIndication.OutputFromRemote);
-
-                case SPWF04SxIndication.SocketClosed: return nameof(SPWF04SxIndication.SocketClosed);
-
-                case SPWF04SxIndication.IncomingSocketClient: return nameof(SPWF04SxIndication.IncomingSocketClient);
-
-                case SPWF04SxIndication.SocketClientGone: return nameof(SPWF04SxIndication.SocketClientGone);
-
-                case SPWF04SxIndication.SocketDroppingData: return nameof(SPWF04SxIndication.SocketDroppingData);
-
-                case SPWF04SxIndication.RemoteConfiguration: return nameof(SPWF04SxIndication.RemoteConfiguration);
-
-                case SPWF04SxIndication.FactoryReset: return nameof(SPWF04SxIndication.FactoryReset);
-
-                case SPWF04SxIndication.LowPowerMode: return nameof(SPWF04SxIndication.LowPowerMode);
-
-                case SPWF04SxIndication.GoingIntoStandby: return nameof(SPWF04SxIndication.GoingIntoStandby);
-
-                case SPWF04SxIndication.ResumingFromStandby: return nameof(SPWF04SxIndication.ResumingFromStandby);
-
-                case SPWF04SxIndication.GoingIntoDeepSleep: return nameof(SPWF04SxIndication.GoingIntoDeepSleep);
-
-                case SPWF04SxIndication.ResumingFromDeepSleep: return nameof(SPWF04SxIndication.ResumingFromDeepSleep);
-
-                case SPWF04SxIndication.StationDisassociated: return nameof(SPWF04SxIndication.StationDisassociated);
-
-                case SPWF04SxIndication.SystemConfigurationUpdated: return nameof(SPWF04SxIndication.SystemConfigurationUpdated);
-
-                case SPWF04SxIndication.RejectedFoundNetwork: return nameof(SPWF04SxIndication.RejectedFoundNetwork);
-
-                case SPWF04SxIndication.RejectedAssociation: return nameof(SPWF04SxIndication.RejectedAssociation);
-
-                case SPWF04SxIndication.WiFiAuthenticationTimedOut: return nameof(SPWF04SxIndication.WiFiAuthenticationTimedOut);
-
-                case SPWF04SxIndication.WiFiAssociationTimedOut: return nameof(SPWF04SxIndication.WiFiAssociationTimedOut);
-
-                case SPWF04SxIndication.MicFailure: return nameof(SPWF04SxIndication.MicFailure);
-
-                case SPWF04SxIndication.UdpBroadcast: return nameof(SPWF04SxIndication.UdpBroadcast);
-
-                case SPWF04SxIndication.WpsGeneratedDhKeyset: return nameof(SPWF04SxIndication.WpsGeneratedDhKeyset);
-
-                case SPWF04SxIndication.WpsEnrollmentAttemptTimedOut: return nameof(SPWF04SxIndication.WpsEnrollmentAttemptTimedOut);
-
-                case SPWF04SxIndication.SockdDroppingClient: return nameof(SPWF04SxIndication.SockdDroppingClient);
-
-                case SPWF04SxIndication.NtpServerDelivery: return nameof(SPWF04SxIndication.NtpServerDelivery);
-
-                case SPWF04SxIndication.DhcpFailedToGetLease: return nameof(SPWF04SxIndication.DhcpFailedToGetLease);
-
-                case SPWF04SxIndication.MqttPublished: return nameof(SPWF04SxIndication.MqttPublished);
-
-                case SPWF04SxIndication.MqttClosed: return nameof(SPWF04SxIndication.MqttClosed);
-
-                case SPWF04SxIndication.WebSocketData: return nameof(SPWF04SxIndication.WebSocketData);
-
-                case SPWF04SxIndication.WebSocketClosed: return nameof(SPWF04SxIndication.WebSocketClosed);
-
-                case SPWF04SxIndication.FileReceived: return nameof(SPWF04SxIndication.FileReceived);
-
-                default: return "Other";
-            }
-        }
-        */
-        #endregion
     }
 }
 

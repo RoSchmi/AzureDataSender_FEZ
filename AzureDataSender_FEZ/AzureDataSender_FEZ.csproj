@@ -70,6 +70,7 @@
       <DependentUpon>ResourcesSecret.resx</DependentUpon>
     </Compile>
     <Compile Include="RoSchmi\DayLightSavingTime\DayLightSavingTime.cs" />
+    <Compile Include="RoSchmi\Interfaces\ISPWF04SxInterface.cs" />
     <Compile Include="RoSchmi\Net\Azure\Storage\AzureStorageHelper.cs" />
     <Compile Include="RoSchmi\Net\Azure\Storage\BasicHttpResponse.cs" />
     <Compile Include="RoSchmi\Net\Azure\Storage\CloudStorageAccount.cs" />
