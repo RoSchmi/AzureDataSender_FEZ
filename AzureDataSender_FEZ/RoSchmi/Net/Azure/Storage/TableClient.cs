@@ -40,6 +40,8 @@ namespace RoSchmi.Net.Azure.Storage
         private IPAddress _fiddlerIP = null;
         private int _fiddlerPort = 8888;
 
+        private SPWF04SxInterfaceRoSchmi wifi;
+
         #region "Debugging"
         private AzureStorageHelper.DebugMode _debug = AzureStorageHelper.DebugMode.StandardDebug;
         private AzureStorageHelper.DebugLevel _debug_level = AzureStorageHelper.DebugLevel.DebugAll;
@@ -149,8 +151,9 @@ namespace RoSchmi.Net.Azure.Storage
         }
 
         #region Constructor
-        public TableClient(CloudStorageAccount account, X509Certificate[] pCertificat, AzureStorageHelper.DebugMode pDebugMode, AzureStorageHelper.DebugLevel pDebugLevel)
+        public TableClient(CloudStorageAccount account, X509Certificate[] pCertificat, AzureStorageHelper.DebugMode pDebugMode, AzureStorageHelper.DebugLevel pDebugLevel, SPWF04SxInterfaceRoSchmi pSPWF04Sx = null)
         {
+            wifi = pSPWF04Sx;
             _account = account;
             InstanceDate = DateTime.UtcNow;
             caCerts = pCertificat;
@@ -284,7 +287,7 @@ namespace RoSchmi.Net.Azure.Storage
             {
                 AzureStorageHelper.SetDebugMode(_debug);
                 AzureStorageHelper.SetDebugLevel(_debug_level);
-                response = AzureStorageHelper.SendWebRequest(uri, authorizationHeader, timestamp, VersionHeader, payload, contentLength, HttpVerb, false, acceptType, tableTypeHeaders);
+                response = AzureStorageHelper.SendWebRequest(wifi, caCerts, uri, authorizationHeader, timestamp, VersionHeader, payload, contentLength, HttpVerb, false, acceptType, tableTypeHeaders);
                 return response.StatusCode;
             }
             catch (Exception ex)
@@ -341,7 +344,7 @@ namespace RoSchmi.Net.Azure.Storage
             {
                 AzureStorageHelper.SetDebugMode(_debug);
                 AzureStorageHelper.SetDebugLevel(_debug_level);
-                response = AzureStorageHelper.SendWebRequest(uri, authorizationHeader, timestamp, VersionHeader, payload, contentLength, HttpVerb, false, acceptType, tableTypeHeaders);
+                response = AzureStorageHelper.SendWebRequest(wifi, caCerts, uri, authorizationHeader, timestamp, VersionHeader, payload, contentLength, HttpVerb, false, acceptType, tableTypeHeaders);
 
                 return response.StatusCode;
             }
@@ -400,7 +403,7 @@ namespace RoSchmi.Net.Azure.Storage
             {
                 AzureStorageHelper.SetDebugMode(_debug);
                 AzureStorageHelper.SetDebugLevel(_debug_level);
-                response = AzureStorageHelper.SendWebRequest(uri, authorizationHeader, timestamp, VersionHeader, payload, contentLength, HttpVerb, false, acceptType, tableTypeHeaders);
+                response = AzureStorageHelper.SendWebRequest(wifi, caCerts, uri, authorizationHeader, timestamp, VersionHeader, payload, contentLength, HttpVerb, false, acceptType, tableTypeHeaders);
 
                 return response.StatusCode;
             }
@@ -485,7 +488,7 @@ namespace RoSchmi.Net.Azure.Storage
             {
                 AzureStorageHelper.SetDebugMode(_debug);
                 AzureStorageHelper.SetDebugLevel(_debug_level);
-                response = AzureStorageHelper.SendWebRequest(uri, authorizationHeader, timestamp, VersionHeader, payload, contentLength, HttpVerb, false, acceptType, tableTypeHeaders);
+                response = AzureStorageHelper.SendWebRequest(wifi, caCerts, uri, authorizationHeader, timestamp, VersionHeader, payload, contentLength, HttpVerb, false, acceptType, tableTypeHeaders);
                 _OperationResponseETag = response.ETag;
                 _OperationResponseMD5 = response.Content_MD5;
                 return response.StatusCode;
@@ -589,7 +592,7 @@ namespace RoSchmi.Net.Azure.Storage
             {
                 AzureStorageHelper.SetDebugMode(_debug);
                 AzureStorageHelper.SetDebugLevel(_debug_level);
-                response = AzureStorageHelper.SendWebRequest(uri, authorizationHeader, timestamp, VersionHeader, payload, contentLength, HttpVerb, false, acceptType, tableTypeHeaders);
+                response = AzureStorageHelper.SendWebRequest(wifi, caCerts, uri, authorizationHeader, timestamp, VersionHeader, payload, contentLength, HttpVerb, false, acceptType, tableTypeHeaders);
 
                 Debug.WriteLine(GC.GetTotalMemory(true).ToString("N0"));
                 ArrayList entities = new ArrayList();
@@ -601,14 +604,8 @@ namespace RoSchmi.Net.Azure.Storage
                 {
                     throw new NotSupportedException("Json serialization is actually not supported");
                     //response.Body = response.Body.Substring(0, response.Body.Length - 7);
-                    //var newInstance = (QueryEntity)JsonConverter.DeserializeObject(response.Body, typeof(QueryEntity), CreateInstance);
-                    var dummy56 = 1;
+                    //var newInstance = (QueryEntity)JsonConverter.DeserializeObject(response.Body, typeof(QueryEntity), CreateInstance);                 
                 }
-
-
-
-
-
                 _OperationResponseBody = response.Body;
                 _OperationResponseQueryList = entities;
                 //if (entities.Count != 0)

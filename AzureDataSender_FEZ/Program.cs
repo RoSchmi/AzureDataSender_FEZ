@@ -137,9 +137,13 @@ namespace AzureDataSender_FEZ
 
         //static byte[] caDigiCertGlobalRootCA = Resources.GetBytes(Resources.BinaryResources.DigiCertGlobalRootCA);   // roschmionline
 
-       // static byte[] caGHI = Resources.GetBytes(Resources.BinaryResources.Digicert___GHI);
+        // static byte[] caGHI = Resources.GetBytes(Resources.BinaryResources.Digicert___GHI);
 
-       // public static byte[] caAzure =  Resources.GetBytes(Resources.BinaryResources.DigiCert_Baltimore_Root);
+        // public static byte[] caAzure =  Resources.GetBytes(Resources.BinaryResources.DigiCert_Baltimore_Root);
+
+        public static byte[] caAzure = Resources.GetBytes(Resources.BinaryResources.BaltimoreCyberTrustRoot);
+
+       // public static X509Certificate caAzure3 = Resources.GetBytes(Resources.BinaryResources.BaltimoreCyberTrustRoot);
 
         //static byte[] caStackExcange = (Resources.GetBytes(Resources.BinaryResources.Digicert___StackExchange));
 
@@ -177,6 +181,8 @@ namespace AzureDataSender_FEZ
             var cont = GpioController.GetDefault();
 
             
+            caCerts = new X509Certificate[] { new X509Certificate(caAzure)};
+           
 
             //FEZ
             var reset = cont.OpenPin(FEZ.GpioPin.WiFiReset);
@@ -563,11 +569,6 @@ namespace AzureDataSender_FEZ
             { partitionKey = partitionKey + DateTime.Today.Year + "-" + (12 - DateTime.Now.Month).ToString("D2"); }
             #endregion
 
-
-
-            
-           
-
             DateTime actDate = DateTime.Now;
 
 
@@ -594,10 +595,19 @@ namespace AzureDataSender_FEZ
             // do not delete
             ArrayList queryResult = new ArrayList();
             HttpStatusCode resultQuery = queryTableEntities(myCloudStorageAccount, analogTableName + yearOfSend.ToString(), "$top=1", out queryResult);
-            var entityHashtable = queryResult[0] as Hashtable;
-            var theRowKey = entityHashtable["RowKey"];
-            var SampleTime = entityHashtable["SampleTime"];
-            Debug.WriteLine("Entity read back from Azure, SampleTime: " + SampleTime);
+            if (resultQuery == HttpStatusCode.OK)
+            {
+                var entityHashtable = queryResult[0] as Hashtable;
+                var theRowKey = entityHashtable["RowKey"];
+                var SampleTime = entityHashtable["SampleTime"];
+                Debug.WriteLine("Entity read back from Azure, SampleTime: " + SampleTime);
+            }
+            else
+            {
+                Debug.WriteLine("Failed to read back Entity from Azure");
+            }
+            
+            
          
             // Debug.WriteLine(GC.GetTotalMemory(true).ToString("N0"));
 
@@ -875,7 +885,7 @@ namespace AzureDataSender_FEZ
         #region private method insertTableEntity
         private static HttpStatusCode insertTableEntity(CloudStorageAccount pCloudStorageAccount, string pTable, TableEntity pTableEntity, out string pInsertETag)
         {
-            table = new TableClient(pCloudStorageAccount, caCerts, _debug, _debug_level);
+            table = new TableClient(pCloudStorageAccount, caCerts, _debug, _debug_level, wifi);
             // To use Fiddler as WebProxy include the following line. Use the local IP-Address of the PC where Fiddler is running
             // see: -http://blog.devmobile.co.nz/2013/01/09/netmf-http-debugging-with-fiddler
 
@@ -893,7 +903,7 @@ namespace AzureDataSender_FEZ
         #region private method createTable
         private static HttpStatusCode createTable(CloudStorageAccount pCloudStorageAccount, string pTableName)
         {
-            table = new TableClient(pCloudStorageAccount, caCerts, _debug, _debug_level);
+            table = new TableClient(pCloudStorageAccount, caCerts, _debug, _debug_level, wifi);
 
             // To use Fiddler as WebProxy include the following line. Use the local IP-Address of the PC where Fiddler is running
             // see: -http://blog.devmobile.co.nz/2013/01/09/netmf-http-debugging-with-fiddler
@@ -911,7 +921,7 @@ namespace AzureDataSender_FEZ
         
         private static HttpStatusCode queryTableEntities(CloudStorageAccount pCloudStorageAccount, string tableName, string query, out ArrayList queryResult)
         {
-            table = new TableClient(pCloudStorageAccount, caCerts, _debug, _debug_level);
+            table = new TableClient(pCloudStorageAccount, caCerts, _debug, _debug_level, wifi);
 
 
             // To use Fiddler as WebProxy include the following line. Use the local IP-Address of the PC where Fiddler is running

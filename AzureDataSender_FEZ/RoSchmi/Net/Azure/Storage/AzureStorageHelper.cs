@@ -15,6 +15,7 @@ using RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx;
 using RoSchmi.Utilities;
 using AzureDataSender_FEZ;
 
+
 namespace RoSchmi.Net.Azure.Storage
 {
 
@@ -46,6 +47,8 @@ namespace RoSchmi.Net.Azure.Storage
         private static IPAddress _fiddlerIP = null;
         private static int _fiddlerPort = 8888;
 
+        private static SPWF04SxInterfaceRoSchmi wifi;
+        private static X509Certificate[] caCerts;
 
         public static bool SocketWasClosed
         { get; set; }
@@ -163,8 +166,10 @@ namespace RoSchmi.Net.Azure.Storage
             }
         }
 
-        public static BasicHttpResponse SendWebRequest(Uri url, string authHeader, string dateHeader, string versionHeader, byte[] payload = null, int contentLength = 0, string httpVerb = "GET", bool expect100Continue = false, string acceptType = "application/json;odata=minimalmetadata", Hashtable additionalHeaders = null)
+        public static BasicHttpResponse SendWebRequest(SPWF04SxInterfaceRoSchmi spwf04sx, X509Certificate[] certificates, Uri url, string authHeader, string dateHeader, string versionHeader, byte[] payload = null, int contentLength = 0, string httpVerb = "GET", bool expect100Continue = false, string acceptType = "application/json;odata=minimalmetadata", Hashtable additionalHeaders = null)
         {
+            caCerts = certificates;
+            wifi = spwf04sx;
             string responseBody = "";
             HttpStatusCode responseStatusCode = HttpStatusCode.Ambiguous;
             try
@@ -179,325 +184,277 @@ namespace RoSchmi.Net.Azure.Storage
                     //HttpWebRequest request = PrepareRequest(url, authHeader, dateHeader, versionHeader, payload, contentLength, httpVerb, expect100Continue, acceptType, additionalHeaders);
 
                     // request = PrepareRequest(url, authHeader, dateHeader, versionHeader, payload, contentLength, httpVerb, expect100Continue, acceptType, additionalHeaders);
-
-                    bool isSocketRequest = true;
-                    SPWF04SxRequest = PrepareSPWF04SxRequest(url, authHeader, dateHeader, versionHeader, payload, contentLength, httpVerb, isSocketRequest, expect100Continue, acceptType, additionalHeaders);
-
-                    Debug.WriteLine(SPWF04SxRequest);
-
-                    byte[] requestBinary = Encoding.UTF8.GetBytes(SPWF04SxRequest);
-
-                   SPWF04SxRequest = "";
-
-                    var buffer = new byte[200];
-
-
-                   
-                    string protocol = "https";
-
-                    
-                    if (httpVerb == "GET")
+                    if (wifi != null)
                     {
-                        Program.wifi.ClearTlsServerRootCertificate();
-                        Program.wifi.ForceSocketsTls = false;
-                        protocol = "http";
-                    }
-                    else
-                    {
-                        Program.wifi.SetTlsServerRootCertificate(Resources.GetBytes(Resources.BinaryResources.BaltimoreCyberTrustRoot));
-                        //Program.wifi.SetTlsServerRootCertificate(Resources.GetBytes(Resources.BinaryResources.DigiCert_Baltimore_Root));
-                        Program.wifi.ForceSocketsTls = true;
-                        protocol = "https";
-                    }
-                                       
-                    int port = protocol == "https" ? 443 : 80;
-                    SPWF04SxConnectionSecurityType securityType = protocol == "https" ? SPWF04SxConnectionSecurityType.Tls : SPWF04SxConnectionSecurityType.None;
+                        bool isSocketRequest = true;
+                        SPWF04SxRequest = PrepareSPWF04SxRequest(url, authHeader, dateHeader, versionHeader, payload, contentLength, httpVerb, isSocketRequest, expect100Continue, acceptType, additionalHeaders);
+
+                        // Print the Request
+                        //Debug.WriteLine(SPWF04SxRequest);
+
+                        byte[] requestBinary = Encoding.UTF8.GetBytes(SPWF04SxRequest);
+
+                        SPWF04SxRequest = "";
+                        var buffer = new byte[200];
+                        string protocol = "https";
+
+                        if (httpVerb == "GET")
+                        {
+                            wifi.ClearTlsServerRootCertificate();
+                            wifi.ForceSocketsTls = false;
+                            protocol = "http";
+                        }
+                        else
+                        {
+                            wifi.SetTlsServerRootCertificate(Resources.GetBytes(Resources.BinaryResources.BaltimoreCyberTrustRoot));
+                            wifi.SetTlsServerRootCertificate(caCerts[0].GetRawCertData());
+                            //Program.wifi.SetTlsServerRootCertificate(Resources.GetBytes(Resources.BinaryResources.DigiCert_Baltimore_Root));
+                            wifi.ForceSocketsTls = true;
+                            protocol = "https";
+                        }
+
+                        int port = protocol == "https" ? 443 : 80;
+                        SPWF04SxConnectionSecurityType securityType = protocol == "https" ? SPWF04SxConnectionSecurityType.Tls : SPWF04SxConnectionSecurityType.None;
 
 
-                    //Program.wifi.ForceSocketsTls = true;
-                    Program.wifi.ForceSocketsTls = false;
-
-                    string commonName = "*.table.core.windows.net";
-                    Program.wifi.ForceSocketsTlsCommonName = commonName;
 
 
+                        #region HttpGET Request outcommented
+                        /*
+                        int httpResult = Program.wifi.SendHttpGet(host, path, port, securityType, "httpresponse01.resp", "httprequest01.requ", requestBinary);
 
-                    // string theControl = Program.wifi.PrintFile("httprequest01.requ");
+                         buffer = new byte[50];
+                         var start = DateTime.UtcNow;
+                         var total = 0;
 
-                    //string path = "/Refrigerator2019()?$top=1";
-
-                    //string path = "/Refrigerator2019";
-                    //string path = "/Tables";
-
-
-
-                    /*
-
-                    int httpResult = Program.wifi.SendHttpGet(host, path, port, securityType, "httpresponse01.resp", "httprequest01.requ", requestBinary);
-                    
-                     buffer = new byte[50];
-                     var start = DateTime.UtcNow;
-                     var total = 0;
-
-                     while (Program.wifi.ReadHttpResponse(buffer, 0, buffer.Length) is var read && read > 0)
-                     {
-                         total += read;
-                         try
+                         while (Program.wifi.ReadHttpResponse(buffer, 0, buffer.Length) is var read && read > 0)
                          {
-                             Debugger.Log(0, "", Encoding.UTF8.GetString(buffer, 0, read));
+                             total += read;
+                             try
+                             {
+                                 Debugger.Log(0, "", Encoding.UTF8.GetString(buffer, 0, read));
 
+                             }
+                             catch
+                             {
+                                 Debugger.Log(0, "", Encoding.UTF8.GetString(buffer, 0, read - 1));
+                             }
+                             Thread.Sleep(100);
                          }
-                         catch
-                         {
-                             Debugger.Log(0, "", Encoding.UTF8.GetString(buffer, 0, read - 1));
-                         }
-                         Thread.Sleep(100);
-                     }
 
-                     Debug.WriteLine($"\r\nRead: {total:N0} in {(DateTime.UtcNow - start).TotalMilliseconds:N0}ms");
+                         Debug.WriteLine($"\r\nRead: {total:N0} in {(DateTime.UtcNow - start).TotalMilliseconds:N0}ms");
 
 
-                     string fileContent = Program.wifi.PrintFile("httpresponse01.resp");
+                         string fileContent = Program.wifi.PrintFile("httpresponse01.resp");
 
-                    */
+                        */
+                        #endregion
 
-
-
-
-
-
-
-
-
-
-
-                    DateTime start = DateTime.UtcNow;
-                    int id = -1;
-
-                    
-                    int timeCtr = 0;
-                    int loopLimit = 15;     // max 15 retries
-                    do
-                    {
-                        long totalMemory = GC.GetTotalMemory(true);
-                        Debug.WriteLine("Total Memory: " + totalMemory.ToString());
-
-                       
-                        //id = Program.wifi.OpenSocket(url.Host, port, SPWF04SxConnectionType.Tcp, securityType, "*.table.core.windows.net");
-                        id = Program.wifi.OpenSocket(url.Host, port, SPWF04SxConnectionType.Tcp, securityType);
-
-                        start = DateTime.UtcNow;
-                        Thread.Sleep(10);
-
-                        SocketDataPending = false;
-
-                        Program.wifi.WriteSocket(id, requestBinary);
-                        if (httpVerb == "POST")
+                        DateTime start = DateTime.UtcNow;
+                        int id = -1;
+                        int timeCtr = 0;
+                        int loopLimit = 15;     // max 15 retries
+                        long totalMemory = 0;
+                        do
                         {
-                            Program.wifi.WriteSocket(id, payload);
-                        }
-                        for (int i = 0; i < 5; i++)    // wait for 500 ms for pending data
-                        {
-                            Thread.Sleep(100);
-                        }
-                        timeCtr++;
-                        if(!SocketDataPending && timeCtr < loopLimit)
-                        {
-                            Program.wifi.CloseSocket(id);
-                            Thread.Sleep(100);
-                        }
-                    } while (!SocketDataPending && timeCtr < loopLimit);    // if there were no data for loopLimit retries, we go on 
-                   
-                    var total = 0;
+                            totalMemory = GC.GetTotalMemory(true);
+                            Debug.WriteLine("Total Memory: " + totalMemory.ToString());
+
+
+                            //id = Program.wifi.OpenSocket(url.Host, port, SPWF04SxConnectionType.Tcp, securityType, "*.table.core.windows.net");
+                            id = wifi.OpenSocket(url.Host, port, SPWF04SxConnectionType.Tcp, securityType);
+
+                            Thread.Sleep(10);
+                            SocketDataPending = false;
+
+                            wifi.WriteSocket(id, requestBinary);
+                            if (httpVerb == "POST")
+                            {
+                                wifi.WriteSocket(id, payload);
+                            }
+                            for (int i = 0; i < 5; i++)    // wait for 500 ms for pending data
+                            {
+                                Thread.Sleep(100);
+                            }
+                            
+                            timeCtr++;
+                            Debug.WriteLine("Write Try: " + timeCtr.ToString());
+                            if (!SocketDataPending && timeCtr < loopLimit)
+                            {
+                                wifi.CloseSocket(id);
+                                Thread.Sleep(100);
+                            }
+                        } while (!SocketDataPending && timeCtr < loopLimit);    // if there were no data for loopLimit retries, we go on 
+
+                        var total = 0;
 
                         var first = true;
-                        
+
                         byte[] totalBuf = new byte[0];
                         byte[] lastBuf = new byte[0];
-                        int offset = 0;                                     
+                        int offset = 0;
                         int read = buffer.Length;
                         timeCtr = 0;
 
-                    long totalMemory2 = GC.GetTotalMemory(true);
-                    Debug.WriteLine("Total Memory: " + totalMemory2.ToString());
+                        totalMemory = GC.GetTotalMemory(true);
+                        Debug.WriteLine("Total Memory: " + totalMemory.ToString());
 
 
-                    //while ((Program.wifi.QuerySocket(id) is var avail && avail > 0) || first || total < 120)
-                    while (((Program.wifi.QuerySocket(id) is var avail && avail > 0) || first || total < 120) && (timeCtr < 30))
+                        //while ((Program.wifi.QuerySocket(id) is var avail && avail > 0) || first || total < 120)
+                        while (((wifi.QuerySocket(id) is var avail && avail > 0) || first || total < 120) && (timeCtr < 30))
                         {
                             if (avail > 0)
                             {
                                 first = false;
-                                read = Program.wifi.ReadSocket(id, buffer, 0, Math.Min(avail, buffer.Length));
+                                read = wifi.ReadSocket(id, buffer, 0, Math.Min(avail, buffer.Length));
                                 total += read;
                                 //Debugger.Log(0, "", Encoding.UTF8.GetString(buffer, 0, read));
                                 lastBuf = totalBuf;
                                 offset = lastBuf.Length;
                                 totalBuf = new byte[offset + read];
                                 Array.Copy(lastBuf, 0, totalBuf, 0, offset);
-                                Array.Copy(buffer, 0, totalBuf, offset, read);                               
+                                Array.Copy(buffer, 0, totalBuf, offset, read);
                             }
                             Thread.Sleep(100);
                             timeCtr++;
                         }
                         Debug.WriteLine($"\r\nRead: {total:N0} in {(DateTime.UtcNow - start).TotalMilliseconds:N0}ms");
-                        
-                        Program.wifi.CloseSocket(id);
+
+                        wifi.CloseSocket(id);
                         lastBuf = new byte[0];
 
-                    
-                   
+                        totalMemory = GC.GetTotalMemory(true);
 
-                    byte[] searchSequence = { 72, 84, 84, 80, 47, 49, 46, 49, 32}; // means: HTTP/1.1_
-                    var searcher = new BoyerMoore(searchSequence);
-                    int[] foundIdxArray = searcher.Search(totalBuf, true);
-
-
-                    //extract httpStatusCode 
-                    string httpStatCode = total > 12 ? Encoding.UTF8.GetString(totalBuf, foundIdxArray[0] + 9, 3) : "300";
+                        //extract httpStatusCode 
+                        //byte[] searchSequence = { 72, 84, 84, 80, 47, 49, 46, 49, 32}; // means: HTTP/1.1_
+                        byte[] searchSequence = Encoding.UTF8.GetBytes("HTTP/1.1 ");
+                        var searcher = new BoyerMoore(searchSequence);
+                        int[] foundIdxArray = searcher.Search(totalBuf, true);
+                        string httpStatCode = total > 12 ? Encoding.UTF8.GetString(totalBuf, foundIdxArray[0] + 9, 3) : "300";
 
 
-
-
-                    if (total > 2)
-                    {
-                        searchSequence = new byte[] { 0x0D, 0x0A };
-
-                        searcher = new BoyerMoore(searchSequence);
-                        foundIdxArray = searcher.Search(totalBuf, false);
-
-                        int printStart = 0;
-                        for (int i = 0; i < foundIdxArray.Length; i++)
+                        // extract ETag
+                        if (total > 5)
                         {
-                            Debug.WriteLine(Encoding.UTF8.GetString(totalBuf, printStart, foundIdxArray[i] - printStart));
-                            printStart = foundIdxArray[i] + 2;
-                        }
-                        try
-                        {
-                            Debug.WriteLine(Encoding.UTF8.GetString(totalBuf, printStart, totalBuf.Length - printStart));
-                        }
-                        catch { }
-                    }
-
-                    
-
-                    // get ETag
-                    if (total > 5)
-                    {                    
-                        searchSequence = Encoding.UTF8.GetBytes("ETag:");
-                        searcher = new BoyerMoore(searchSequence);
-                        foundIdxArray = searcher.Search(totalBuf, true);
-                        if ((foundIdxArray.Length > 0) &&  totalBuf.Length > (foundIdxArray[0] + 6))
-                        {
-                            
-                            int startOfETag = foundIdxArray[0] + 6;
-                            int endOfETag = startOfETag;
-                            while ((endOfETag + 1 < totalBuf.Length) && (totalBuf[endOfETag] != 0x0D) && (totalBuf[endOfETag +1] != 0x0A) )
+                            searchSequence = Encoding.UTF8.GetBytes("ETag:");
+                            searcher = new BoyerMoore(searchSequence);
+                            foundIdxArray = searcher.Search(totalBuf, true);
+                            if ((foundIdxArray.Length > 0) && totalBuf.Length > (foundIdxArray[0] + 6))
                             {
-                                endOfETag++;
+                                int startOfETag = foundIdxArray[0] + 6;
+                                int endOfETag = startOfETag;
+                                while ((endOfETag + 1 < totalBuf.Length) && (totalBuf[endOfETag] != 0x0D) && (totalBuf[endOfETag + 1] != 0x0A))
+                                {
+                                    endOfETag++;
+                                }
+                                _responseHeader_ETag = Encoding.UTF8.GetString(totalBuf, startOfETag, endOfETag - startOfETag);
                             }
-                            _responseHeader_ETag = Encoding.UTF8.GetString(totalBuf, startOfETag, endOfETag - startOfETag);
                         }
-                        var dummy79 = 1;
-                    }
-
-                    string contLength = "0";
-
-                    // get Content-Length
-                    /*
-                    if (total > 4)
-                    {
-                        searchSequence = Encoding.UTF8.GetBytes("Content-Length:");
-                        searcher = new BoyerMoore(searchSequence);
-                        foundIdxArray = searcher.Search(totalBuf, false);
-                        if ((foundIdxArray.Length > 0) && totalBuf.Length > (foundIdxArray[0] + 15))
+                        // Print all headers of response
+                        
+                        if (total > 2)
                         {
+                            searchSequence = new byte[] { 0x0D, 0x0A };
 
-                            int startOfETag = foundIdxArray[0] + 15;
-                            int endOfETag = startOfETag;
-                            while ((endOfETag + 1 < totalBuf.Length) && (totalBuf[endOfETag] != 0x0D) && (totalBuf[endOfETag + 1] != 0x0A))
+                            searcher = new BoyerMoore(searchSequence);
+                            foundIdxArray = searcher.Search(totalBuf, false);
+
+                            int printStart = 0;
+                            // Print Response Line
+                            Debug.WriteLine(Encoding.UTF8.GetString(totalBuf, 0, foundIdxArray[0]));  
+                            printStart = foundIdxArray[0] + 2;
+
+                            // Print response headers. This throws no free memory exception (I don't know why). If you wand to see the headers, inactivate printing the request
+                            /*
+                            for (int i = 1; i < foundIdxArray.Length - 3; i++)
                             {
-                                endOfETag++;
+                                totalMemory = GC.GetTotalMemory(true);
+                                Debug.WriteLine("Remaining Ram: " + GHIElectronics.TinyCLR.Native.Memory.FreeBytes + " used Bytes: " + GHIElectronics.TinyCLR.Native.Memory.UsedBytes);                              
+                                PrindLine(totalBuf, printStart, foundIdxArray[i] - printStart);                          
+                                printStart = foundIdxArray[i] + 2;
                             }
-                            contLength = Encoding.UTF8.GetString(totalBuf, startOfETag, endOfETag - startOfETag);
-                            var dummy321 = 1;
+                            */
                         }
+                        
 
-                    }
-                    */
-
-                    
+                        // extract start and end of body
+                        int startOfBody = 0;
+                        int endOfBody = 0;
                         if (total > 4)
-                    {
-                        
-                        searchSequence = new byte[] { 0x0D, 0x0A, 0x0D, 0x0A };
-                        searcher = new BoyerMoore(searchSequence);
-                        foundIdxArray = searcher.Search(totalBuf, false);
-
-                        
-
-                        int startOfLength = foundIdxArray[0] + 4;
-                        if ((startOfLength + 4) < totalBuf.Length)
                         {
-                            int endOfLength = startOfLength;
-                            while ((endOfLength + 1 < totalBuf.Length) && (totalBuf[endOfLength] != 0x0D) && (totalBuf[endOfLength + 1] != 0x0A))
+
+                            searchSequence = new byte[] { 0x0D, 0x0A, 0x0D, 0x0A };
+                            searcher = new BoyerMoore(searchSequence);
+                            foundIdxArray = searcher.Search(totalBuf, false);
+                            int startOfLength = foundIdxArray[0] + 4;
+                            if ((startOfLength + 4) < totalBuf.Length)
                             {
-                                endOfLength++;
+                                int endOfLength = startOfLength;
+                                while ((endOfLength + 1 < totalBuf.Length) && (totalBuf[endOfLength] != 0x0D) && (totalBuf[endOfLength + 1] != 0x0A))
+                                {
+                                    endOfLength++;
+                                }
+
+                                startOfBody = endOfLength + 2;
+
+                                if ((foundIdxArray.Length > 1) && (foundIdxArray[foundIdxArray.Length - 1] > (totalBuf.Length - 5)))
+                                {
+                                    endOfBody = foundIdxArray[foundIdxArray.Length - 1] - 3;
+                                }
+                                else
+                                {
+                                    endOfBody = totalBuf.Length - 1;
+                                    httpStatCode = "300";
+                                }
+
+                                totalMemory = GC.GetTotalMemory(true);
+                                
+                                    responseBody = Encoding.UTF8.GetString(totalBuf, startOfBody, endOfBody - startOfBody);
+                                    Debug.WriteLine(responseBody);
+                                
+
                             }
 
-                            int startOfBody = endOfLength + 2;
+                            
 
-                            try
+                            /*
+                            byte[] bodyLengthArray = new byte[4];
+                            int startPos = 4 - (endOfLength - startOfLength);
+                            Array.Copy(totalBuf, startOfLength, bodyLengthArray, startPos, endOfLength - startOfLength);
+
+                            byte[] reversedArray = new byte[4];
+
+                            for (int i = 0; i < 4; i++)
                             {
-                                responseBody = Encoding.UTF8.GetString(totalBuf, startOfBody, totalBuf.Length - startOfBody);
-                            }
-                            catch (Exception ex)
-                            {
-                                var dummy7656 = ex.Message;
+                                reversedArray[i] = bodyLengthArray[3 - i];
                             }
 
-                            Debug.WriteLine(responseBody);
+                            var bodyLength = BitConverter.ToInt32(reversedArray, 0);
+
+
+
+                            var dummy79 = 1;
+
+
+
+                            var result = BitConverter.ToInt32(new byte[4] { 0, 1, 1, 1 }, 0);
+                            */
+
+                            var dummy78 = 1;
 
                         }
 
-                        /*
-                        byte[] bodyLengthArray = new byte[4];
-                        int startPos = 4 - (endOfLength - startOfLength);
-                        Array.Copy(totalBuf, startOfLength, bodyLengthArray, startPos, endOfLength - startOfLength);
-
-                        byte[] reversedArray = new byte[4];
-
-                        for (int i = 0; i < 4; i++)
-                        {
-                            reversedArray[i] = bodyLengthArray[3 - i];
-                        }
-
-                        var bodyLength = BitConverter.ToInt32(reversedArray, 0);
-                        
-                        
-
-                        var dummy79 = 1;
-
-                        
-
-                        var result = BitConverter.ToInt32(new byte[4] { 0, 1, 1, 1 }, 0);
-                        */
-
-                        var dummy78 = 1;
-
-                    }
-                    
+                        Program.wifi.CloseSocket(id);
 
 
+                        //  string theResult = Encoding.UTF8.GetString(totalBuf);
 
-                    //  string theResult = Encoding.UTF8.GetString(totalBuf);
+                        totalBuf = new Byte[0];
 
-                    totalBuf = new Byte[0];
-                        
-                    //WaitForButton();
-                    //cont = false;
-                
-                    
+                        //WaitForButton();
+                        //cont = false;
+
+
                         /*
                         int lineStart = 0;
                         int lineEnd = 0;
@@ -508,90 +465,94 @@ namespace RoSchmi.Net.Azure.Storage
                             lineStart = lineEnd + 2;
                         }
                         */
-                        Program.wifi.CloseSocket(id);
+                       
 
-                    
-                      //  Thread.Sleep(30);                 
-                    /*
-                    int httpResult = Program.wifi.SendHttpPost(host, "/Tables()", port, SPWF04SxConnectionSecurityType.Tls, "httpresponse01.resp", "httprequest01.requ", requestBinary);
-                    buffer = new byte[50];
-                    var start = DateTime.UtcNow;
-                    var total = 0;
 
-                    while (Program.wifi.ReadHttpResponse(buffer, 0, buffer.Length) is var read && read > 0)
-                    {
-                        total += read;
-                        try
+                        //  Thread.Sleep(30);                 
+                        /*
+                        int httpResult = Program.wifi.SendHttpPost(host, "/Tables()", port, SPWF04SxConnectionSecurityType.Tls, "httpresponse01.resp", "httprequest01.requ", requestBinary);
+                        buffer = new byte[50];
+                        var start = DateTime.UtcNow;
+                        var total = 0;
+
+                        while (Program.wifi.ReadHttpResponse(buffer, 0, buffer.Length) is var read && read > 0)
                         {
-                            //  Debugger.Log(0, "", Encoding.UTF8.GetString(buffer, 0, read));
+                            total += read;
+                            try
+                            {
+                                //  Debugger.Log(0, "", Encoding.UTF8.GetString(buffer, 0, read));
 
+                            }
+                            catch
+                            {
+                                // Debugger.Log(0, "", Encoding.UTF8.GetString(buffer, 0, read - 1));
+                            }
+                            Thread.Sleep(100);
                         }
-                        catch
+
+                        Debug.WriteLine($"\r\nRead: {total:N0} in {(DateTime.UtcNow - start).TotalMilliseconds:N0}ms");
+                        */
+
+                        switch (httpStatCode)
                         {
-                            // Debugger.Log(0, "", Encoding.UTF8.GetString(buffer, 0, read - 1));
+                            case "200":
+                                {
+                                    responseStatusCode = HttpStatusCode.OK;
+                                }
+                                break;
+                            case "204":
+                                {
+                                    responseStatusCode = HttpStatusCode.NoContent;
+                                }
+                                break;
+                            case "300":
+                                {
+                                    responseStatusCode = HttpStatusCode.Ambiguous;
+                                }
+                                break;
+                            case "400":
+                                {
+                                    responseStatusCode = HttpStatusCode.BadRequest;
+                                }
+                                break;
+                            case "403":
+                                {
+                                    responseStatusCode = HttpStatusCode.Forbidden;
+                                }
+                                break;
+                            case "404":
+                                {
+                                    responseStatusCode = HttpStatusCode.NotFound;
+                                }
+                                break;
+
+                            case "409":
+                                {
+                                    responseStatusCode = HttpStatusCode.Conflict;
+                                }
+                                break;
+                            default:
+                                {
+                                    responseStatusCode = HttpStatusCode.Ambiguous;
+                                }
+                                break;
                         }
-                        Thread.Sleep(100);
+
+
+
+
+                        return new BasicHttpResponse() { ETag = _responseHeader_ETag, Body = responseBody, StatusCode = responseStatusCode };
                     }
-
-                    Debug.WriteLine($"\r\nRead: {total:N0} in {(DateTime.UtcNow - start).TotalMilliseconds:N0}ms");
-                    */
-
-                    switch (httpStatCode)
+                    else
                     {
-                        case "200":
-                            {
-                                responseStatusCode = HttpStatusCode.OK;
-                            }
-                            break;
-                        case "204":
-                            {
-                                responseStatusCode = HttpStatusCode.NoContent;
-                            }
-                            break;
-                        case "300":
-                            {
-                                responseStatusCode = HttpStatusCode.Ambiguous;
-                            }
-                            break;
-                        case "400":
-                            {
-                                responseStatusCode = HttpStatusCode.BadRequest;
-                            }
-                            break;
-                        case "403":
-                            {
-                                responseStatusCode = HttpStatusCode.Forbidden;
-                            }
-                            break;
-                        case "404":
-                            {
-                                responseStatusCode = HttpStatusCode.NotFound;
-                            }
-                            break;
-
-                        case "409":
-                            {
-                                responseStatusCode = HttpStatusCode.Conflict;
-                            }
-                            break;
-                        default:
-                            {
-                                responseStatusCode = HttpStatusCode.Ambiguous;
-                            }
-                            break;
+                        return new BasicHttpResponse() { ETag = _responseHeader_ETag, Body = responseBody, StatusCode = responseStatusCode };
+                        // insert NET Http request here
                     }
-
-
-                    
-
-                    return new BasicHttpResponse() { ETag = _responseHeader_ETag, Body = responseBody, StatusCode = responseStatusCode };
                 }
                 catch
                 {
                     return new BasicHttpResponse() { ETag = _responseHeader_ETag, Body = responseBody, StatusCode = responseStatusCode };
-                }
-
-                
+                }               
             }
             catch
             {
@@ -600,6 +561,11 @@ namespace RoSchmi.Net.Azure.Storage
             }
 
           
+        }
+
+        private static void PrindLine(byte[] buffer, int start, int count)
+        {
+            Debug.WriteLine(Encoding.UTF8.GetString(buffer, start, count));
         }
 
         /*

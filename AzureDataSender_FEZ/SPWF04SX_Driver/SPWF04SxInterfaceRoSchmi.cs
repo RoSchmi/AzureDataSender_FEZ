@@ -720,26 +720,17 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                 }
                 */
                 .Finalize(SPWF04SxCommandIds.SOCKON);
-
-
-
-
-
-
             this.EnqueueCommand(cmd);
-
-            // Sleep added by RoSchmi
-            //Thread.Sleep(100);
 
             var a = cmd.ReadString();
             var b = cmd.ReadString();
-            Debug.WriteLine("1 a: " + a.ToString() + " b " + b.ToString());
+            //Debug.WriteLine("1 a: " + a.ToString() + " b " + b.ToString());
 
             if (connectionSecurity == SPWF04SxConnectionSecurityType.Tls && b.IndexOf("Loading:") == 0)
             {
                 a = cmd.ReadString();
                 b = cmd.ReadString();
-                Debug.WriteLine("2 a: " + a.ToString() + " b " + b.ToString());
+                //Debug.WriteLine("2 a: " + a.ToString() + " b " + b.ToString());
             }
 
             this.FinishCommand(cmd);
@@ -816,10 +807,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             cmd.ReadBuffer();
 
             this.FinishCommand(cmd);
-            Debug.WriteLine("Finished Query");
-
-            //Debug.WriteLine(result[0] + "Res: " + result[1].ToString());
-
+            
             return result[0] == "Query" ? int.Parse(result[1]) : throw new Exception("Request failed");
         }
 
@@ -993,8 +981,10 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                             //        break;
                             //}
 
+                            
                             switch (ind)
                             {
+                                
                                 case 0x00:
                                     {
                                         // OK - for command without payload or after the last chunk of data of an answer on a command
@@ -1004,50 +994,46 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                                 case 0x02:
                                     {
                                         // Seen, actually meaning not clear
-                                        Debug.WriteLine("Indication: " + ind.ToString("X2") + " PayLoad = " + payloadLength.ToString());
+                                        //Debug.WriteLine("Indication: " + ind.ToString("X2") + " PayLoad = " + payloadLength.ToString());
                                     }
                                     break;
                                 case 0x03:
                                     {
                                         // Seen after FSP Command
-                                        Debug.WriteLine("Indication: " + ind.ToString("X2") + " PayLoad = " + payloadLength.ToString());                                       
+                                        //Debug.WriteLine("Indication: " + ind.ToString("X2") + " PayLoad = " + payloadLength.ToString());                                       
                                     }
                                     break; 
                                 case 0x2C:
                                     {
                                         // Seen, actually meaning not clear
-                                        Debug.WriteLine("Indication: " + ind.ToString("X2") + " PayLoad = " + payloadLength.ToString());
+                                        Debug.WriteLine("Indication: " + ind.ToString("X2") + "Meaning ? " + " Pld = " + payloadLength.ToString());
                                     }
                                     break;
                                 case 0x38:  // dez 56 unable to delete file ?
-                                    {
-                                        // Seen after FSC (Create file) command
-                                        Debug.WriteLine("Indication: " + ind.ToString("X2") + " PayLoad = " + payloadLength.ToString());
+                                    {                                      
+                                        Debug.WriteLine("Ind: " + ind.ToString("X2") + " Unable to delete file" + " Pld = " + payloadLength.ToString());                                       
                                     }
                                     break;
                                 case 0x41:  // dez 65 DNS Address Failure
                                     {
                                         // Seen after WiFi disassociation
-                                        Debug.WriteLine("Indication: " + ind.ToString("X2") + " PayLoad = " + payloadLength.ToString());
+                                        Debug.WriteLine("Indication: " + ind.ToString("X2") + " DNS Address failed " + " Pld = " + payloadLength.ToString());
                                     }
                                     break;
 
                                 case 0x4A:   // dez 77 failed to open socket  // Certificate error
-                                    {
-                                        // Seen, meaning not clear
-                                        Debug.WriteLine("Indication: " + ind.ToString("X2") + " PayLoad = " + payloadLength.ToString());
+                                    {                                       
+                                        Debug.WriteLine("Ind: " + ind.ToString("X2") + " Failed to open socket " + " Pld = " + payloadLength.ToString());                                       
                                     }
                                     break;
                                 case 0x4C:   // dez 79 Write failed
                                     {
-                                        // Seen, meaning not clear
-                                        Debug.WriteLine("Indication: " + ind.ToString("X2") + " PayLoad = " + payloadLength.ToString());
+                                        Debug.WriteLine("Ind: " + ind.ToString("X2") + " Write failed " + " Pld = " + payloadLength.ToString());                                       
                                     }
                                     break;
                                 case 0x6F:   // dez 111 Request failed
                                     {
-                                        // Seen, meaning not clear
-                                        Debug.WriteLine("Indication: " + ind.ToString("X2") + " PayLoad = " + payloadLength.ToString());
+                                        Debug.WriteLine("Ind: " + ind.ToString("X2") + " Request failed " + " Pld = " + payloadLength.ToString());                                       
                                     }
                                     break;
 
