@@ -211,6 +211,14 @@ namespace AzureDataSender_FEZ
 
             wiFi_SPWF04S_Device.DateTimeNtpServerDelivered += WiFi_SPWF04S_Device_DateTimeNtpServerDelivered;
 
+            wiFi_SPWF04S_Device.WiFiAssociationChanged += WiFi_SPWF04S_Device_WiFiAssociationChanged;
+
+            wiFi_SPWF04S_Device.WiFiNetworkLost += WiFi_SPWF04S_Device_WiFiNetworkLost;
+
+            
+
+            
+
             Debug.WriteLine("Remaining Ram before initialize: " + GHIElectronics.TinyCLR.Native.Memory.FreeBytes + " used Bytes: " + GHIElectronics.TinyCLR.Native.Memory.UsedBytes);
 
             wiFi_SPWF04S_Device.Initialize();
@@ -490,18 +498,12 @@ namespace AzureDataSender_FEZ
                 Thread.Sleep(100);
             }              
         }
+
+        
         #endregion
 
-        private static void WiFi_SPWF04S_Device_PendingSocketData(WiFi_SPWF04S_Device sender, WiFi_SPWF04S_Device.PendingDataEventArgs e)
-        {
-            AzureStorageHelper.SocketDataPending = e.SocketDataPending;
-        }
 
-        private static void WiFi_SPWF04S_Device_SocketWasClosed(WiFi_SPWF04S_Device sender, WiFi_SPWF04S_Device.SocketClosedEventArgs e)
-        {
-            AzureStorageHelper.SocketWasClosed = e.SocketIsClosed;
-        }
-        
+
 
 
         //     *************************************   Event writeAnalogToCloudTimer_tick     *******************************************************
@@ -550,6 +552,7 @@ namespace AzureDataSender_FEZ
             if (AnalogCloudTableYear != yearOfSend)
             {
                 resultTableCreate = createTable(myCloudStorageAccount, analogTableName + DateTime.Today.Year.ToString());
+                var dumy345 = 1;
             }
 
             if ((resultTableCreate == HttpStatusCode.Created) || (resultTableCreate == HttpStatusCode.NoContent) || (resultTableCreate == HttpStatusCode.Conflict))
@@ -606,10 +609,11 @@ namespace AzureDataSender_FEZ
             {
                 Debug.WriteLine("Failed to read back Entity from Azure");
             }
-            
-            
-         
-            // Debug.WriteLine(GC.GetTotalMemory(true).ToString("N0"));
+
+
+            long freeMemory = GHIElectronics.TinyCLR.Native.Memory.FreeBytes;
+            Debug.WriteLine("In Timer event. Total memory: " + GC.GetTotalMemory(true).ToString("N0") + " Free Memory: " + freeMemory);
+           
 
 
             writeAnalogToCloudTimer.Change(writeToCloudInterval * 10 * 1000, writeToCloudInterval * 10 * 1000);
@@ -620,6 +624,49 @@ namespace AzureDataSender_FEZ
 
         }
         #endregion
+
+        private static void WiFi_SPWF04S_Device_WiFiNetworkLost(WiFi_SPWF04S_Device sender, WiFi_SPWF04S_Device.WiFiNetworkLostEventArgs e)
+        {
+            AzureStorageHelper.WiFiNetworkLost = e.WiFiNetworkLost;
+        }
+
+        private static void WiFi_SPWF04S_Device_WiFiAssociationChanged(WiFi_SPWF04S_Device sender, WiFi_SPWF04S_Device.WiFiAssociationEventArgs e)
+        {
+            AzureStorageHelper.WiFiAssociationState = e.WiFiAssociationState ? true : false;
+        }
+
+
+        private static void WiFi_SPWF04S_Device_PendingSocketData(WiFi_SPWF04S_Device sender, WiFi_SPWF04S_Device.PendingDataEventArgs e)
+        {
+            AzureStorageHelper.SocketDataPending = e.SocketDataPending;
+        }
+
+        private static void WiFi_SPWF04S_Device_SocketWasClosed(WiFi_SPWF04S_Device sender, WiFi_SPWF04S_Device.SocketClosedEventArgs e)
+        {
+            AzureStorageHelper.SocketWasClosed = e.SocketIsClosed;
+        }
+
+        private static void WiFi_SPWF04S_Device_Ip4AddressAssigned(WiFi_SPWF04S_Device sender, WiFi_SPWF04S_Device.Ip4AssignedEventArgs e)
+        {
+            lock (LockProgram)
+            {
+                ip4Address = e.Ip4Address;
+                AzureStorageHelper.WiFiNetworkLost = false;
+            }
+        }
+
+        private static void WiFi_SPWF04S_Device_DateTimeNtpServerDelivered(WiFi_SPWF04S_Device sender, WiFi_SPWF04S_Device.NTPServerDeliveryEventArgs e)
+        {
+            lock (LockProgram)
+            {
+                dateTimeNtpServerDelivery = e.DateTimeNTPServer;
+                timeDeltaNTPServerDelivery = e.TimeDeltaNTPServer;
+                SystemTime.SetTime(dateTimeNtpServerDelivery, timeZoneOffset);
+                dateTimeAndIpAddressAreSet = true;
+            }
+            waitForWiFiReady.Set();
+        }
+
 
 
         /*
@@ -958,29 +1005,7 @@ namespace AzureDataSender_FEZ
 
 
 
-        private static void WiFi_SPWF04S_Device_Ip4AddressAssigned(WiFi_SPWF04S_Device sender, WiFi_SPWF04S_Device.Ip4AssignedEventArgs e)
-        {
-            lock (LockProgram)
-            {
-                ip4Address = e.Ip4Address;
-
-                // RoSchmi: has to be deleted
-                // waitForWiFiReady.Set();
-                // dateTimeAndIpAddressAreSet = true;
-            }
-        }
-
-        private static void WiFi_SPWF04S_Device_DateTimeNtpServerDelivered(WiFi_SPWF04S_Device sender, WiFi_SPWF04S_Device.NTPServerDeliveryEventArgs e)
-        {
-            lock (LockProgram)
-            {
-                dateTimeNtpServerDelivery = e.DateTimeNTPServer;
-                timeDeltaNTPServerDelivery = e.TimeDeltaNTPServer;
-                SystemTime.SetTime(dateTimeNtpServerDelivery, timeZoneOffset);               
-                dateTimeAndIpAddressAreSet = true;
-            }
-            waitForWiFiReady.Set();
-        }
+        
 
         #region Private method GetDlstOffset
 

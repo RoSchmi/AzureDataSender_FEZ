@@ -40,6 +40,10 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         public bool ForceSocketsTls { get; set; }
         public string ForceSocketsTlsCommonName { get; set; }
 
+        //Added by RoSchmi
+        private bool SocketErrorHappened = false;
+
+
         
         public static SpiConnectionSettings GetConnectionSettings(SpiChipSelectType chipSelectType, int chipSelectLine) => new SpiConnectionSettings
         {
@@ -450,12 +454,15 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         public void DeleteRamFile(string filename)
         {
             if (filename == null) throw new ArgumentNullException();
-            var cmd = this.GetCommand()
-                    .AddParameter(filename)                   
-                   .Finalize(SPWF04SxCommandIds.FSD);
-            this.EnqueueCommand(cmd);
-            cmd.ReadBuffer();
-            this.FinishCommand(cmd);            
+            if (this.GetFileProperties(filename) != null)
+            {
+                var cmd = this.GetCommand()
+                        .AddParameter(filename)
+                       .Finalize(SPWF04SxCommandIds.FSD);
+                this.EnqueueCommand(cmd);
+                cmd.ReadBuffer();
+                this.FinishCommand(cmd);
+            }
         }
 
         /// <summary>
@@ -468,11 +475,13 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         {
             if (filename == null) throw new ArgumentNullException();
             if (rawData == null) throw new ArgumentNullException();
-            //if (rawData.Length == 0) throw new ArgumentOutOfRangeException();
-
+            
             if (append == false)
             {
-                this.DeleteRamFile(filename);              
+                if (this.GetFileProperties(filename) != null)
+                {
+                    this.DeleteRamFile(filename);
+                }
             }          
             var cmd = this.GetCommand()                     // Write rawData to file                
                 .AddParameter(filename)
@@ -720,22 +729,52 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                 }
                 */
                 .Finalize(SPWF04SxCommandIds.SOCKON);
+
+            SocketErrorHappened = false;
             this.EnqueueCommand(cmd);
-
-            var a = cmd.ReadString();
-            var b = cmd.ReadString();
-            //Debug.WriteLine("1 a: " + a.ToString() + " b " + b.ToString());
-
-            if (connectionSecurity == SPWF04SxConnectionSecurityType.Tls && b.IndexOf("Loading:") == 0)
+            Thread.Sleep(0);
+            string a = string.Empty;
+            string b = string.Empty;
+            if (!SocketErrorHappened)
             {
                 a = cmd.ReadString();
-                b = cmd.ReadString();
-                //Debug.WriteLine("2 a: " + a.ToString() + " b " + b.ToString());
+                Thread.Sleep(0);
+                Debug.WriteLine("Successfully read a: " + a);
+                if (!SocketErrorHappened)
+                {
+                    b = cmd.ReadString();
+                    Debug.WriteLine("1 a: " + a + " b " + b);
+                }
+                Thread.Sleep(0);
+                if (connectionSecurity == SPWF04SxConnectionSecurityType.Tls && b.IndexOf("Loading:") == 0)
+                {
+                    if (!SocketErrorHappened)
+                    {
+                        a = cmd.ReadString();
+                    }
+                    Thread.Sleep(0);
+                    if (!SocketErrorHappened)
+                    {
+                        b = cmd.ReadString();
+                        Debug.WriteLine("2 a: " + a.ToString() + " b " + b.ToString());
+                    }
+                }
+                else
+                {
+                    Debug.WriteLine("First read was not Loading:");
+                }
             }
 
             this.FinishCommand(cmd);
 
-            return a.Split(':') is var result && result[0] == "On" ? int.Parse(result[2]) : throw new Exception("Request failed");
+            if (SocketErrorHappened)
+            {
+                Debug.WriteLine("Socket Error happened **************************************");
+            }
+            
+            //return a.Split(':') is var result && result[0] == "On" ? int.Parse(result[2]) : throw new Exception("Request failed");
+            return a.Split(':') is var result && result[0] == "On" ? int.Parse(result[2]) : - 1;
+
         }
 
         public void CloseSocket(int socket)
@@ -956,6 +995,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                             }
 
                             var str = Encoding.UTF8.GetString(windPayloadBuffer.Data, 0, payloadLength);
+                            
 
                             pendingEvents.Enqueue(type == 0x01 ? new SPWF04SxIndicationReceivedEventArgs((SPWF04SxIndication)ind, str) : (object)new SPWF04SxErrorReceivedEventArgs(ind, str));
                         }
@@ -1003,10 +1043,10 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                                         //Debug.WriteLine("Indication: " + ind.ToString("X2") + " PayLoad = " + payloadLength.ToString());                                       
                                     }
                                     break; 
-                                case 0x2C:
+                                case 0x2C:  // dez 44 wait for connection up
                                     {
-                                        // Seen, actually meaning not clear
-                                        Debug.WriteLine("Indication: " + ind.ToString("X2") + "Meaning ? " + " Pld = " + payloadLength.ToString());
+                                        SocketErrorHappened = true;
+                                        Debug.WriteLine("Indication: " + ind.ToString("X2") + " Wait for connection up " + " Pld = " + payloadLength.ToString());
                                     }
                                     break;
                                 case 0x38:  // dez 56 unable to delete file ?
@@ -1015,14 +1055,15 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                                     }
                                     break;
                                 case 0x41:  // dez 65 DNS Address Failure
-                                    {
-                                        // Seen after WiFi disassociation
+                                    {                                       
+                                        SocketErrorHappened = true;
                                         Debug.WriteLine("Indication: " + ind.ToString("X2") + " DNS Address failed " + " Pld = " + payloadLength.ToString());
                                     }
                                     break;
 
-                                case 0x4A:   // dez 77 failed to open socket  // Certificate error
-                                    {                                       
+                                case 0x4A:   // dez 77 failed to open socket  
+                                    {
+                                        SocketErrorHappened = true;
                                         Debug.WriteLine("Ind: " + ind.ToString("X2") + " Failed to open socket " + " Pld = " + payloadLength.ToString());                                       
                                     }
                                     break;
@@ -1082,7 +1123,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                         {
                             case SPWF04SxIndicationReceivedEventArgs e: this.IndicationReceived?.Invoke(this, e); break;
                             case SPWF04SxErrorReceivedEventArgs e: this.ErrorReceived?.Invoke(this, e); break;
-                        }
+                        }                      
                     }
                 }              
                 Thread.Sleep(0);             

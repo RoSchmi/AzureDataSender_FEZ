@@ -1,5 +1,5 @@
-// Copyright RoSchmi 2016 License Apache 2.0
-// Version 2.0 28.05.2016 NETMF 4.3 GHI SDK 2016 R1 Prerelease 2
+// Copyright RoSchmi 2019 License Apache 2.0
+// Version 1.0 11.02.2019 for TinyCLR v1.0.0
 // Parts of the code were taken from
 // by AndyCross: netmfazurestorage / Table / TableClient.cs
 // -https://github.com/azure-contrib/netmfazurestorage/blob/master/netmfazurestorage/Table/TableClient.cs
@@ -8,7 +8,6 @@
 // -https://github.com/PervasiveDigital/serialwifi/tree/master/src/Common
 
 using System;
-//using Microsoft.SPOT;
 using System.Collections;
 using System.IO;
 using System.Net;
@@ -16,13 +15,11 @@ using System.Text;
 using System.Security.Cryptography;
 using PervasiveDigital.Utilities;
 using PervasiveDigital.Security.ManagedProviders;
-
 using System.Security.Cryptography.X509Certificates;
 using System.Diagnostics;
 using RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx;
 using AzureDataSender_FEZ;
 using PervasiveDigital.Json;
-
 
 
 namespace RoSchmi.Net.Azure.Storage
@@ -595,35 +592,38 @@ namespace RoSchmi.Net.Azure.Storage
                 response = AzureStorageHelper.SendWebRequest(wifi, caCerts, uri, authorizationHeader, timestamp, VersionHeader, payload, contentLength, HttpVerb, false, acceptType, tableTypeHeaders);
 
                 Debug.WriteLine(GC.GetTotalMemory(true).ToString("N0"));
+
                 ArrayList entities = new ArrayList();
                 if (response.Body.StartsWith("<?xml"))
                 {
                     entities = ParseResponse(response.Body);
+                   
+                    _OperationResponseQueryList = entities;
+
                 }
-                else
-                {
-                    throw new NotSupportedException("Json serialization is actually not supported");
-                    //response.Body = response.Body.Substring(0, response.Body.Length - 7);
-                    //var newInstance = (QueryEntity)JsonConverter.DeserializeObject(response.Body, typeof(QueryEntity), CreateInstance);                 
+                    else if (response.Body.StartsWith("{\"odata.metadata\":"))
+                    {
+                        throw new NotSupportedException("Json serialization is actually not supported");
+                        //response.Body = response.Body.Substring(0, response.Body.Length - 7);
+                        //var newInstance = (QueryEntity)JsonConverter.DeserializeObject(response.Body, typeof(QueryEntity), CreateInstance);      
                 }
-                _OperationResponseBody = response.Body;
-                _OperationResponseQueryList = entities;
-                //if (entities.Count != 0)
-                //{
+
+                _OperationResponseBody = response.Body.Substring(0, Math.Min(response.Body.Length, 300));   // not more than 300 char
+
                 if (entities.Count == 1)
                 {
                     _OperationResponseETag = response.ETag;
                     _OperationResponseSingleQuery = entities[0] as Hashtable;
                 }
-                // }
+                
 
                 return response.StatusCode;
             }
             catch (Exception ex)
             {
                 _Print_Debug("Exception was cought: " + ex.Message);
-                response.StatusCode = HttpStatusCode.Forbidden;
-                //return null;
+                response.StatusCode = HttpStatusCode.NotFound;
+               
                 return response.StatusCode;
             }
         }
@@ -1041,43 +1041,6 @@ namespace RoSchmi.Net.Azure.Storage
             }
         }
         #endregion
-
-        /*
-        #region CreateTableAuthorizationHeader
-        protected string CreateTableAuthorizationHeader(byte[] content, string canonicalResource, string ptimeStamp, string pHttpVerb, ContType pContentType, out string pMD5Hash, bool useSharedKeyLite = false)
-        {
-            string contentType = getContentTypeString(pContentType);
-            pMD5Hash = string.Empty;
-            if (!useSharedKeyLite)
-            {
-                pMD5Hash = MD5ComputeHash(content);
-            }
-
-            string toSign = string.Empty;
-            if (useSharedKeyLite)
-            {
-                toSign = StringUtilities.Format("{0}\n{1}", ptimeStamp, canonicalResource);
-            }
-            else
-            {
-                toSign = StringUtilities.Format("{0}\n{4}\n{1}\n{2}\n{3}", pHttpVerb, contentType, ptimeStamp, canonicalResource, pMD5Hash);
-            }
-
-            string signature;
-            var hmac = new HMACSHA256(Convert.FromBase64String(_account.AccountKey));
-            var hmacBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(toSign));
-            signature = Convert.ToBase64String(hmacBytes).Replace("!", "+").Replace("*", "/"); ;
-            if (useSharedKeyLite)
-            {
-                return "SharedKeyLite " + _account.AccountName + ":" + signature;
-            }
-            else
-            {
-                return "SharedKey " + _account.AccountName + ":" + signature;
-            }
-        }
-        #endregion
-        */
 
         private static object CreateInstance(string path, string name, int length)
         {

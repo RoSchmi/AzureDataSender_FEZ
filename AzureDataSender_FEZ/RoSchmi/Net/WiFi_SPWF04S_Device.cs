@@ -116,13 +116,29 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             */
         }
 
-
+        #region IndicationReceived
         private void WiFiSPWF04S_IndicationReceived(SPWF04SxInterfaceRoSchmi sender, SPWF04SxIndicationReceivedEventArgs e)
         {
             Debug.WriteLine($"WIND: {WindToName(e.Indication)} {e.Message}");
 
             switch (e.Indication)
             {
+                case SPWF04SxIndication.WiFiNetwork:
+                    {
+                        OnWiFiNetworkLostEvent(this, new WiFiNetworkLostEventArgs(true));
+                    }
+                    break;
+                case SPWF04SxIndication.WiFiDisassociation:
+                    {
+                        OnWiFiAssociationEvent(this, new WiFiAssociationEventArgs(false));
+                    }
+                    break;
+                case SPWF04SxIndication.WiFiAssociationSuccessful:
+                    {
+                        OnWiFiAssociationEvent(this, new WiFiAssociationEventArgs(true));
+                    }
+                    break;
+
                 case SPWF04SxIndication.PendingData:
                     {
                         OnPendingData(this, new PendingDataEventArgs(true));
@@ -176,8 +192,54 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                     break;
             }
         }
+        #endregion
 
         #region Delegates
+        /// <summary>        
+        /// The delegate that is used to handle the WiFiNetworkLost events.
+        /// </summary>
+        /// <param name="sender">The <see cref="WiFi_SPWF04S_Device"/> object that raised the event.</param>
+        /// <param name="e">The event arguments.</param>        
+        public delegate void WiFiNetworkLostEventHandler(WiFi_SPWF04S_Device sender, WiFiNetworkLostEventArgs e);
+
+        /// <summary>
+        /// Raised when data are pending.
+        /// </summary>
+        public event WiFiNetworkLostEventHandler WiFiNetworkLost;
+        private WiFiNetworkLostEventHandler onWiFiNetworkLostEvent;
+
+        private void OnWiFiNetworkLostEvent(WiFi_SPWF04S_Device sender, WiFiNetworkLostEventArgs e)
+        {
+            if (this.onWiFiNetworkLostEvent == null)
+            {
+                this.onWiFiNetworkLostEvent = this.OnWiFiNetworkLostEvent;
+            }
+            this.WiFiNetworkLost(sender, e);
+        }
+       
+        
+        /// <summary>        
+        /// The delegate that is used to handle the WiFiAssociation event
+        /// <param name="sender">The <see cref="WiFi_SPWF04S_Device"/> object that raised the event.</param>
+        /// <param name="e">The event arguments.</param>        
+        public delegate void WiFiAssociationEventHandler(WiFi_SPWF04S_Device sender, WiFiAssociationEventArgs e);
+        
+        /// <summary>
+        /// Raised when data are pending.
+        /// </summary>
+        public event WiFiAssociationEventHandler WiFiAssociationChanged;
+        private WiFiAssociationEventHandler onWiFiAssociationEvent;
+
+        private void OnWiFiAssociationEvent(WiFi_SPWF04S_Device sender, WiFiAssociationEventArgs e)
+        {
+            if (this.onWiFiAssociationEvent == null)
+            {
+                this.onWiFiAssociationEvent = this.OnWiFiAssociationEvent;
+            }
+            this.WiFiAssociationChanged(sender, e);
+        }
+
+        //OnWiFiAssociationEvent
         /// <summary>        
         /// The delegate that is used to handle the Pending Data event.
         /// </summary>
@@ -275,6 +337,34 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         #endregion
 
         #region Region EventArgs
+        public class WiFiNetworkLostEventArgs : EventArgs
+        {
+            /// <summary>
+            /// Indicates that WiFiNetwork is lost
+            /// </summary>
+            ///
+            public bool WiFiNetworkLost
+            { get; private set; }
+            internal WiFiNetworkLostEventArgs(bool pWiFiNetworkLost)
+            {
+                this.WiFiNetworkLost = pWiFiNetworkLost;
+            }
+        }
+       
+        public class WiFiAssociationEventArgs : EventArgs
+        {
+            /// <summary>
+            /// Indicates that WiFiAssociation state changed
+            /// </summary>
+            ///
+            public bool WiFiAssociationState
+            { get; private set; }
+            internal WiFiAssociationEventArgs(bool pWiFiAssociationState)
+            {
+                this.WiFiAssociationState = pWiFiAssociationState;
+            }
+        }
+
         public class PendingDataEventArgs : EventArgs
         {
             /// <summary>
