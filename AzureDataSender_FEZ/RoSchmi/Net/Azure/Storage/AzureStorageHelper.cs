@@ -56,8 +56,8 @@ namespace RoSchmi.Net.Azure.Storage
         public static bool SocketDataPending
         { get; set; }
 
-        public static bool WiFiAssociationState
-        { get; set; }
+        //public static bool WiFiAssociationState
+        //{ get; set; }
 
         public static bool WiFiNetworkLost
         { get; set; }
@@ -260,8 +260,9 @@ namespace RoSchmi.Net.Azure.Storage
 
                         #region Wait 2 seconds for recovery when Network lost and functioning WifiAssociation
                         int timeCtr = 0;
-                        while (((WiFiAssociationState == false) || WiFiNetworkLost) && (timeCtr < 20 ))   // Wait 2 sec for WifiAssociation, if not there, return
-                        {
+                        //while (((WiFiAssociationState == false) || WiFiNetworkLost) && (timeCtr < 20 ))   // Wait 2 sec for WifiAssociation, if not there, return
+                        while (WiFiNetworkLost && (timeCtr < 20))   // Wait 2 sec for WifiAssociation, if not there, return
+                            {
                             if (timeCtr < 0)
                             {
                                 Debug.WriteLine("Didn't try to open socket (Disassociation or WifiNetworkLost)");
@@ -269,7 +270,7 @@ namespace RoSchmi.Net.Azure.Storage
                             Thread.Sleep(100);
                             timeCtr++;
                         }
-                        if (!WiFiAssociationState)
+                        if (WiFiNetworkLost)
                         {
                             Debug.WriteLine("Gave up finally to open socket (Disassociation)");
                             return new BasicHttpResponse() { ETag = null, Body = "", StatusCode = HttpStatusCode.NotFound };
@@ -295,6 +296,7 @@ namespace RoSchmi.Net.Azure.Storage
                             {
                                 Debug.WriteLine("Going to open socket");
                                 totalMemory = GC.GetTotalMemory(true);
+
                                 id = wifi.OpenSocket(url.Host, port, SPWF04SxConnectionType.Tcp, securityType);
                                 
                                 if (socketTimeCtr > 0)

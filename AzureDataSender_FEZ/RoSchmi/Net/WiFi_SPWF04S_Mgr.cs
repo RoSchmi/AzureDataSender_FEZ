@@ -101,7 +101,16 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         #region IndicationReceived
         private void WiFiSPWF04S_IndicationReceived(SPWF04SxInterfaceRoSchmi sender, SPWF04SxIndicationReceivedEventArgs e)
         {
-            Debug.WriteLine($"WIND: {WindToName(e.Indication)} {e.Message}");
+
+            //Debug.WriteLine($"WIND: {WindToName(e.Indication)} {e.Message}");
+            if (e.Indication != SPWF04SxIndication.WpaCrunchingPsk)
+            {
+                Debug.WriteLine($"WIND: {WindToName(e.Indication)} {e.Message}");
+            }
+            else
+            {
+                Debug.WriteLine($"WIND: {WindToName(e.Indication)} {"***"}");
+            }
 
             switch (e.Indication)
             {
@@ -110,6 +119,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                         OnWiFiNetworkLostEvent(this, new WiFiNetworkLostEventArgs(true));
                     }
                     break;
+                    /*
                 case SPWF04SxIndication.WiFiDisassociation:
                     {
                         OnWiFiAssociationEvent(this, new WiFiAssociationEventArgs(false));
@@ -120,7 +130,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                         OnWiFiAssociationEvent(this, new WiFiAssociationEventArgs(true));
                     }
                     break;
-
+                    */
                 case SPWF04SxIndication.PendingData:
                     {
                         OnPendingData(this, new PendingDataEventArgs(true));
@@ -198,7 +208,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             this.WiFiNetworkLost(sender, e);
         }
 
-
+        /*
         /// <summary>        
         /// The delegate that is used to handle the WiFiAssociation event
         /// <param name="sender">The <see cref="WiFi_SPWF04S_Mgr"/> object that raised the event.</param>
@@ -206,7 +216,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         public delegate void WiFiAssociationEventHandler(WiFi_SPWF04S_Mgr sender, WiFiAssociationEventArgs e);
 
         /// <summary>
-        /// Raised when data are pending.
+        /// Raised when WiFiAssociation changed.
         /// </summary>
         public event WiFiAssociationEventHandler WiFiAssociationChanged;
         private WiFiAssociationEventHandler onWiFiAssociationEvent;
@@ -219,8 +229,8 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             }
             this.WiFiAssociationChanged(sender, e);
         }
-
-        //OnWiFiAssociationEvent
+        */
+        
         /// <summary>        
         /// The delegate that is used to handle the Pending Data event.
         /// </summary>
@@ -520,7 +530,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
                 case SPWF04SxIndication.Dot11Illegal: return nameof(SPWF04SxIndication.Dot11Illegal);
 
-                case SPWF04SxIndication.WpaCrunchingPsk: return nameof(SPWF04SxIndication.WpaCrunchingPsk);
+                case SPWF04SxIndication.WpaCrunchingPsk: return nameof(SPWF04SxIndication.WpaCrunchingPsk);               
 
                 case SPWF04SxIndication.WpaTerminated: return nameof(SPWF04SxIndication.WpaTerminated);
 

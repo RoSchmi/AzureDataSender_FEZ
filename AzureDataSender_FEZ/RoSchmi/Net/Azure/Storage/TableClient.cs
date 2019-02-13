@@ -296,126 +296,13 @@ namespace RoSchmi.Net.Azure.Storage
         }
         #endregion
 
-        #region DeleteTable
-        public HttpStatusCode DeleteTable(string tableName, ContType pContentType = ContType.applicationIatomIxml, AcceptType pAcceptType = AcceptType.applicationIjson, bool useSharedKeyLite = false)
-        {
-            OperationResultsClear(); ;
-            string timestamp = GetDateHeader();
-            string content = string.Empty;
-            string queryString = "Tables";
-
-            string contentType = getContentTypeString(pContentType);
-
-            string acceptType = getAcceptTypeString(pAcceptType);
-            if (pAcceptType == AcceptType.applicationIjson)
-            //{ acceptType = "application/json;odata=minimalmetadata"; }
-            { acceptType = "application/json;odata=nometadata"; }
-
-            string HttpVerb = "DELETE";
-            string ContentMD5 = string.Empty;
-            byte[] hashContentMD5 = null;
-
-            int contentLength = 0;
-            byte[] payload = GetBodyBytesAndLength(content, out contentLength);
-            if (tableName != string.Empty)
-            {
-                queryString = StringUtilities.Format("Tables('{0}')", tableName);
-            }
-            //string authorizationHeader = CreateTableAuthorizationHeader(payload, StringUtilities.Format("/{0}/{1}", _account.AccountName, queryString), timestamp, HttpVerb, pContentType, out ContentMD5, useSharedKeyLite);
-            string authorizationHeader = CreateTableAuthorizationHeader(payload, String.Format("/{0}/{1}", _account.AccountName, tableName + "()"), timestamp, HttpVerb, pContentType, out ContentMD5, out hashContentMD5, useSharedKeyLite);
-
-            string TableEndPoint = _account.UriEndpoints["Table"].ToString();
-            Uri uri = new Uri(TableEndPoint + "/" + queryString);
-            var tableTypeHeaders = new Hashtable();
-            tableTypeHeaders.Add("Accept-Charset", "UTF-8");
-            tableTypeHeaders.Add("MaxDataServiceVersion", "3.0;NetFx");
-            tableTypeHeaders.Add("Content-Type", contentType);
-            tableTypeHeaders.Add("DataServiceVersion", "3.0");
-            tableTypeHeaders.Add("Content-MD5", ContentMD5);
-
-            if (_fiddlerIsAttached)
-            { AzureStorageHelper.AttachFiddler(_fiddlerIsAttached, _fiddlerIP, _fiddlerPort); }
-
-            BasicHttpResponse response = new BasicHttpResponse();
-            try
-            {
-                AzureStorageHelper.SetDebugMode(_debug);
-                AzureStorageHelper.SetDebugLevel(_debug_level);
-                response = AzureStorageHelper.SendWebRequest(wifi, caCerts, uri, authorizationHeader, timestamp, VersionHeader, payload, contentLength, HttpVerb, false, acceptType, tableTypeHeaders);
-
-                return response.StatusCode;
-            }
-            catch (Exception ex)
-            {
-                _Print_Debug("Exception was cought: " + ex.Message);
-                response.StatusCode = HttpStatusCode.Forbidden;
-                return response.StatusCode;
-            }
-        }
-        #endregion
-
-        #region QueryTables
-
-        public HttpStatusCode QueryTables(string tableName, ContType pContentType = ContType.applicationIatomIxml, AcceptType pAcceptType = AcceptType.applicationIjson, bool useSharedKeyLite = false)
-        {
-            OperationResultsClear(); ;
-            string timestamp = GetDateHeader();
-            string content = string.Empty;
-            string queryString = "Tables";
-
-            string contentType = getContentTypeString(pContentType);
-
-            string acceptType = getAcceptTypeString(pAcceptType);
-            if (pAcceptType == AcceptType.applicationIjson)
-            { acceptType = "application/json;odata=nometadata"; }
-            //{ acceptType = "application/json;odata=minimalmetadata"; }
-
-            string HttpVerb = "GET";
-            string ContentMD5 = string.Empty;
-            int contentLength = 0;
-            byte[] hashContentMD5 = null;
-            byte[] payload = GetBodyBytesAndLength(content, out contentLength);
-            if (tableName != string.Empty)
-            {
-                queryString = StringUtilities.Format("Tables('{0}')", tableName);
-            }
-            //string authorizationHeader = CreateTableAuthorizationHeader(payload, StringUtilities.Format("/{0}/{1}", _account.AccountName, queryString), timestamp, HttpVerb, pContentType, out ContentMD5, useSharedKeyLite);
-            string authorizationHeader = CreateTableAuthorizationHeader(payload, StringUtilities.Format("/{0}/{1}", _account.AccountName, queryString), timestamp, HttpVerb, pContentType, out ContentMD5, out hashContentMD5, useSharedKeyLite);
-
-
-            string TableEndPoint = _account.UriEndpoints["Table"].ToString();
-            Uri uri = new Uri(TableEndPoint + "/" + queryString);
-            var tableTypeHeaders = new Hashtable();
-            tableTypeHeaders.Add("Accept-Charset", "UTF-8");
-            tableTypeHeaders.Add("MaxDataServiceVersion", "3.0;NetFx");
-            tableTypeHeaders.Add("Content-Type", contentType);
-            tableTypeHeaders.Add("DataServiceVersion", "3.0");
-            tableTypeHeaders.Add("Content-MD5", ContentMD5);
-
-            if (_fiddlerIsAttached)
-            { AzureStorageHelper.AttachFiddler(_fiddlerIsAttached, _fiddlerIP, _fiddlerPort); }
-
-            BasicHttpResponse response = new BasicHttpResponse();
-            try
-            {
-                AzureStorageHelper.SetDebugMode(_debug);
-                AzureStorageHelper.SetDebugLevel(_debug_level);
-                response = AzureStorageHelper.SendWebRequest(wifi, caCerts, uri, authorizationHeader, timestamp, VersionHeader, payload, contentLength, HttpVerb, false, acceptType, tableTypeHeaders);
-
-                return response.StatusCode;
-            }
-            catch (Exception ex)
-            {
-                _Print_Debug("Exception was cought: " + ex.Message);
-                response.StatusCode = HttpStatusCode.Forbidden;
-                return response.StatusCode;
-            }
-        }
-        #endregion
-
         #region InsertTabelEntity
         public HttpStatusCode InsertTableEntity(string tableName, TableEntity pEntity, ContType pContentType = ContType.applicationIatomIxml, AcceptType pAcceptType = AcceptType.applicationIjson, ResponseType pResponseType = ResponseType.returnContent, bool useSharedKeyLite = false)
         {
+            long totalMemory = GC.GetTotalMemory(true);
+            long freeMemory = GHIElectronics.TinyCLR.Native.Memory.FreeBytes;
+            Debug.WriteLine("TableClient: Start of InsertTableEntity " + totalMemory.ToString("N0") + " Free Memory: " + freeMemory.ToString("N0"));
+
             OperationResultsClear(); ;
             string timestamp = GetDateHeader();
             string content = string.Empty;
@@ -469,6 +356,17 @@ namespace RoSchmi.Net.Azure.Storage
 
             Uri uri = new Uri(TableEndPoint + "/" + tableName + "()");
 
+            var tableTypeHeaders = new Hashtable
+            {
+                { "Accept-Charset", "UTF-8" },
+                { "MaxDataServiceVersion", "3.0;NetFx" },
+                { "Content-Type", contentType },
+                { "DataServiceVersion", "3.0" },
+                { "Prefer", getResponseTypeString(pResponseType) },
+                { "Content-MD5", ContentMD5 }
+            };
+
+            /*
             var tableTypeHeaders = new Hashtable();
             tableTypeHeaders.Add("Accept-Charset", "UTF-8");
             tableTypeHeaders.Add("MaxDataServiceVersion", "3.0;NetFx");
@@ -476,7 +374,7 @@ namespace RoSchmi.Net.Azure.Storage
             tableTypeHeaders.Add("DataServiceVersion", "3.0");
             tableTypeHeaders.Add("Prefer", getResponseTypeString(pResponseType));
             tableTypeHeaders.Add("Content-MD5", ContentMD5);
-
+            */
             if (_fiddlerIsAttached)
             { AzureStorageHelper.AttachFiddler(_fiddlerIsAttached, _fiddlerIP, _fiddlerPort); }
 
@@ -586,10 +484,10 @@ namespace RoSchmi.Net.Azure.Storage
                 AzureStorageHelper.SetDebugLevel(_debug_level);
                 response = AzureStorageHelper.SendWebRequest(wifi, caCerts, uri, authorizationHeader, timestamp, VersionHeader, payload, contentLength, HttpVerb, false, acceptType, tableTypeHeaders);
 
-                long totalMemory = GC.GetTotalMemory(true);
-
-                _Print_Debug("Total Memory: " + totalMemory.ToString("N0"));
                
+                long totalMemory = GC.GetTotalMemory(true);
+                long freeMemory = GHIElectronics.TinyCLR.Native.Memory.FreeBytes;
+                Debug.WriteLine("TableClient: QueryTableEntities. Total Memory: " + totalMemory.ToString("N0") + "Free Bytes: " + freeMemory.ToString("N0"));
 
                 ArrayList entities = new ArrayList();
                 if ((response.Body != null) && (response.Body.StartsWith("<?xml")))
@@ -603,6 +501,10 @@ namespace RoSchmi.Net.Azure.Storage
                         //response.Body = response.Body.Substring(0, response.Body.Length - 7);
                         //var newInstance = (QueryEntity)JsonConverter.DeserializeObject(response.Body, typeof(QueryEntity), CreateInstance);      
                 }
+
+                totalMemory = GC.GetTotalMemory(true);
+                freeMemory = GHIElectronics.TinyCLR.Native.Memory.FreeBytes;
+                Debug.WriteLine("TableClient: before filling _OperationResponseBody. Total Memory: " + totalMemory.ToString("N0") + "Free Bytes: " + freeMemory.ToString("N0"));
 
                 _OperationResponseBody = response.Body.Substring(0, Math.Min(response.Body.Length, 300));   // not more than 300 char
 
@@ -624,169 +526,6 @@ namespace RoSchmi.Net.Azure.Storage
             }
         }
 
-        #endregion
-
-        #region DeleteTableEntity
-        /*
-        public HttpStatusCode DeleteTableEntity(string tableName, string partitionKey, string rowKey, ContType pContentType = ContType.applicationIatomIxml, AcceptType pAcceptType = AcceptType.applicationIjson, string ETag = "", bool useSharedKeyLite = false)
-        {
-            string timestamp = GetDateHeader();
-            string content = string.Empty;
-            string contentType = getContentTypeString(pContentType);
-            string acceptType = getAcceptTypeString(pAcceptType);
-            if (pAcceptType == AcceptType.applicationIjson)
-            { acceptType = "application/json;odata=minimalmetadata"; }
-
-            string HttpVerb = "DELETE";
-            int contentLength = 0;
-            byte[] payload = GetBodyBytesAndLength(content, out contentLength);
-            string ContentMD5 = string.Empty;
-            byte[] hashContentMD5 = null;
-
-            string matchString = StringUtilities.Format("{1}(PartitionKey='{2}',RowKey='{3}')", _account.AccountName, tableName, partitionKey, rowKey);
-
-            //var authorizationHeader = CreateTableAuthorizationHeader(payload, StringUtilities.Format("/{0}/{1}",_account.AccountName, matchString), timestamp, HttpVerb, ContType.applicationIatomIxml, out ContentMD5, useSharedKeyLite);
-            var authorizationHeader = CreateTableAuthorizationHeader(payload, StringUtilities.Format("/{0}/{1}", _account.AccountName, matchString), timestamp, HttpVerb, ContType.applicationIatomIxml, out ContentMD5, out hashContentMD5, useSharedKeyLite);
-
-
-            string TableEndPoint = _account.UriEndpoints["Table"].ToString();
-
-            Uri uri = new Uri(TableEndPoint + "/" + matchString);
-
-            var tableTypeHeaders = new Hashtable();
-
-
-
-            if (ETag == "")
-            { 
-                tableTypeHeaders.Add("If-Match", "*");
-            }
-            else
-            {
-                tableTypeHeaders.Add("If-Match", ETag);
-            }
-
-            tableTypeHeaders.Add("Accept-Charset", "UTF-8");
-            tableTypeHeaders.Add("MaxDataServiceVersion", "3.0;NetFx");
-            tableTypeHeaders.Add("Content-Type", contentType);
-            tableTypeHeaders.Add("DataServiceVersion", "3.0");
-            tableTypeHeaders.Add("Content-MD5", ContentMD5);
-
-            if (_fiddlerIsAttached)
-            { AzureStorageHelper.AttachFiddler(_fiddlerIsAttached, _fiddlerIP, _fiddlerPort); }
-
-            BasicHttpResponse response = new BasicHttpResponse();
-            try
-            {
-                AzureStorageHelper.SetDebugMode(_debug);
-                AzureStorageHelper.SetDebugLevel(_debug_level);
-                response = AzureStorageHelper.SendWebRequest(uri, authorizationHeader, timestamp, VersionHeader, payload, contentLength, HttpVerb, false, acceptType, tableTypeHeaders);
-
-                return response.StatusCode;
-            }
-            catch (Exception ex)
-            {
-                _Print_Debug("Exception was cought: " + ex.Message);
-                response.StatusCode = HttpStatusCode.Forbidden;
-                return response.StatusCode;
-            }
-        }
-        */
-        #endregion
-
-        #region UpdateTableEntity
-        /*
-       public HttpStatusCode UpdateTableEntity(string tableName, string partitionKey, string rowKey, TableEntity pEntity, ContType pContentType = ContType.applicationIatomIxml, AcceptType pAcceptType = AcceptType.applicationIjson, ResponseType pResponseType = ResponseType.returnContent, string ETag = "", bool useSharedKeyLite = false)
-       {
-           OperationResultsClear(); ;
-           string timestamp = GetDateHeader();
-           string content = string.Empty;
-
-           string contentType = getContentTypeString(pContentType);
-           string acceptType = getAcceptTypeString(pAcceptType);
-
-           switch (contentType)
-           {
-               case "application/json":
-                   {
-                       content = pEntity.ReadJson();
-                   }
-                   break;
-               case "application/atom+xml":
-                   {
-                      content = StringUtilities.Format("<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?><entry xmlns:d=\"http://schemas.microsoft.com/ado/2007/08/dataservices\" xmlns:m=\"http://schemas.microsoft.com/ado/2007/08/dataservices/metadata\" xmlns=\"http://www.w3.org/2005/Atom\">" +
-                       "<id>http://{0}.table.core.windows.net/{5}(PartitionKey='{2}',RowKey='{3}')</id>" +
-                       "<title/><updated>{1}</updated>" +
-                       "<author><name /></author>" +
-                       "<content type=\"application/atom+xml\"><m:properties><d:PartitionKey>{2}</d:PartitionKey><d:RowKey>{3}</d:RowKey>" +
-                       "{4}" +
-                       "</m:properties>" +
-                       "</content>" +
-                       "</entry>", _account.AccountName, timestamp, pEntity.PartitionKey, pEntity.RowKey, GetTableXml(pEntity.Properties), tableName);
-                   }
-                   break;
-               default:
-                   {
-                       throw new NotSupportedException("ContentType must be 'application/json' or 'application/atom+xml'");
-                   }
-           }
-
-
-           string HttpVerb = "PUT";
-           var contentLength = 0;
-           var payload = GetBodyBytesAndLength(content, out contentLength);
-           string ContentMD5 = string.Empty;
-           byte[] hashContentMD5 = null;
-
-           string matchString = StringUtilities.Format("{1}(PartitionKey='{2}',RowKey='{3}')", _account.AccountName, tableName, partitionKey, rowKey);
-
-           //var authorizationHeader = CreateTableAuthorizationHeader(payload, StringUtilities.Format("/{0}/{1}", _account.AccountName, matchString), timestamp, HttpVerb, ContType.applicationIatomIxml, out ContentMD5, useSharedKeyLite);
-           var authorizationHeader = CreateTableAuthorizationHeader(payload, StringUtilities.Format("/{0}/{1}", _account.AccountName, matchString), timestamp, HttpVerb, ContType.applicationIatomIxml, out ContentMD5, out hashContentMD5, useSharedKeyLite);
-
-
-           string TableEndPoint = _account.UriEndpoints["Table"].ToString();
-
-           Uri uri = new Uri(TableEndPoint + "/" + matchString);
-
-           var tableTypeHeaders = new Hashtable();
-
-           if (ETag == "")
-           {
-               tableTypeHeaders.Add("If-Match", "*");
-           }
-           else
-           {
-               tableTypeHeaders.Add("If-Match", ETag);
-           }
-
-           tableTypeHeaders.Add("Accept-Charset", "UTF-8");
-           tableTypeHeaders.Add("MaxDataServiceVersion", "3.0;NetFx");
-           tableTypeHeaders.Add("Content-Type", contentType);
-           tableTypeHeaders.Add("DataServiceVersion", "3.0");
-           tableTypeHeaders.Add("Prefer", getResponseTypeString(pResponseType));
-           tableTypeHeaders.Add("Content-MD5", ContentMD5);
-
-           if (_fiddlerIsAttached)
-           { AzureStorageHelper.AttachFiddler(_fiddlerIsAttached, _fiddlerIP, _fiddlerPort); }
-
-           BasicHttpResponse response = new BasicHttpResponse();
-           try
-           {
-               AzureStorageHelper.SetDebugMode(_debug);
-               AzureStorageHelper.SetDebugLevel(_debug_level);
-               response = AzureStorageHelper.SendWebRequest(uri, authorizationHeader, timestamp, VersionHeader, payload, contentLength, HttpVerb, false, acceptType, tableTypeHeaders);
-               _OperationResponseETag = response.ETag;
-               _OperationResponseMD5 = response.Content_MD5;
-               return response.StatusCode;
-           }
-           catch (Exception ex)
-           {
-               _Print_Debug("Exception was cought: " + ex.Message);
-               response.StatusCode = HttpStatusCode.Forbidden;
-               return response.StatusCode;
-           }
-       }
-   */
         #endregion
 
         #region FormatEntityXml
@@ -962,8 +701,9 @@ namespace RoSchmi.Net.Azure.Storage
             string contentType = getContentTypeString(pContentType);
             pMD5Hash = string.Empty;
             pHash = null;
-
-
+            long totalMemory = GC.GetTotalMemory(true);
+            long freeMemory = GHIElectronics.TinyCLR.Native.Memory.FreeBytes;
+            Debug.WriteLine("Before calculatin Authorization Header: " + totalMemory.ToString("N0") + " Free Memory: " + freeMemory.ToString("N0"));
 
             //string Md5String = Encoding.UTF8.GetString(Program.wifi.ComputeHash("3", "fileToHash")).Substring(4);
 

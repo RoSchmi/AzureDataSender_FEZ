@@ -130,7 +130,11 @@ namespace AzureDataSender_FEZ
 
         private static IPAddress ip4Address = IPAddress.Parse("0.0.0.0");
 
-        public static byte[] caAzure = Resources.GetBytes(Resources.BinaryResources.BaltimoreCyberTrustRoot);
+
+
+       // public static byte[] caAzure = Resources.GetBytes(Resources.BinaryResources.BaltimoreCyberTrustRoot);
+
+
 
         // Set your WiFi Credentials here or store them in the Resources
         static string wiFiSSID_1 = ResourcesSecret.GetString(ResourcesSecret.StringResources.SSID_1);
@@ -154,7 +158,7 @@ namespace AzureDataSender_FEZ
 
         private static CloudStorageAccount myCloudStorageAccount;
 
-        private static X509Certificate[] caCerts;
+        //private static X509Certificate[] caCerts;
 
         private static GpioPin _pinPyton;
 
@@ -168,14 +172,19 @@ namespace AzureDataSender_FEZ
 
         #region Region Main
         static void Main()
-        {          
-            Debug.WriteLine("Remaining Ram at start  Main: " + GHIElectronics.TinyCLR.Native.Memory.FreeBytes + " used Bytes: " + GHIElectronics.TinyCLR.Native.Memory.UsedBytes);
+        {
+            long totalMemory = GC.GetTotalMemory(true);
+            Debug.WriteLine("Remaining Ram at start of Main: " + GHIElectronics.TinyCLR.Native.Memory.FreeBytes + " used Bytes: " + GHIElectronics.TinyCLR.Native.Memory.UsedBytes);
             Debug.WriteLine("DateTime at Start: " + DateTime.Now.ToString());
         
             var cont = GpioController.GetDefault();
            
-            caCerts = new X509Certificate[] { new X509Certificate(caAzure)};
-                     
+           // caCerts = new X509Certificate[] { new X509Certificate(caAzure)};
+
+            totalMemory = GC.GetTotalMemory(true);
+            Debug.WriteLine("Remaining Ram after no instance of caCerts: " + GHIElectronics.TinyCLR.Native.Memory.FreeBytes + " used Bytes: " + GHIElectronics.TinyCLR.Native.Memory.UsedBytes);
+
+
             var reset = cont.OpenPin(FEZ.GpioPin.WiFiReset);
 
             _pinPyton = cont.OpenPin(FEZCLR.GpioPin.PA0);
@@ -188,17 +197,31 @@ namespace AzureDataSender_FEZ
             var spi = scont.GetDevice(SPWF04SxInterfaceRoSchmi.GetConnectionSettings(SpiChipSelectType.Gpio, FEZ.GpioPin.WiFiChipSelect));
             //var spi = scont.GetDevice(ISPWF04SxInterface.GetConnectionSettings(SpiChipSelectType.Gpio, FEZ.GpioPin.WiFiChipSelect));
 
+            totalMemory = GC.GetTotalMemory(true);
+            Debug.WriteLine("Total Memory: " + totalMemory.ToString());
+            Debug.WriteLine("Remaining Ram before creating wifi: " + GHIElectronics.TinyCLR.Native.Memory.FreeBytes + " used Bytes: " + GHIElectronics.TinyCLR.Native.Memory.UsedBytes);
+
 
             wifi = new SPWF04SxInterfaceRoSchmi(spi, irq, reset);
-         
+
+            totalMemory = GC.GetTotalMemory(true);
+            Debug.WriteLine("Total Memory: " + totalMemory.ToString());
+            Debug.WriteLine("Remaining Ram after creating wifi: " + GHIElectronics.TinyCLR.Native.Memory.FreeBytes + " used Bytes: " + GHIElectronics.TinyCLR.Native.Memory.UsedBytes);
+
+
             wiFi_SPWF04S_Mgr = new WiFi_SPWF04S_Mgr(wifi, wiFiSSID_1, wiFiKey_1);
+
+            totalMemory = GC.GetTotalMemory(true);
+            Debug.WriteLine("Total Memory: " + totalMemory.ToString());
+            Debug.WriteLine("Remaining Ram after creating wifi_SPWF04S_Mrg: " + GHIElectronics.TinyCLR.Native.Memory.FreeBytes + " used Bytes: " + GHIElectronics.TinyCLR.Native.Memory.UsedBytes);
+
 
 
             wiFi_SPWF04S_Mgr.PendingSocketData += WiFi_SPWF04S_Device_PendingSocketData;
             wiFi_SPWF04S_Mgr.SocketWasClosed += WiFi_SPWF04S_Device_SocketWasClosed;
             wiFi_SPWF04S_Mgr.Ip4AddressAssigned += WiFi_SPWF04S_Device_Ip4AddressAssigned;
             wiFi_SPWF04S_Mgr.DateTimeNtpServerDelivered += WiFi_SPWF04S_Device_DateTimeNtpServerDelivered;
-            wiFi_SPWF04S_Mgr.WiFiAssociationChanged += WiFi_SPWF04S_Device_WiFiAssociationChanged;
+            //wiFi_SPWF04S_Mgr.WiFiAssociationChanged += WiFi_SPWF04S_Device_WiFiAssociationChanged;
             wiFi_SPWF04S_Mgr.WiFiNetworkLost += WiFi_SPWF04S_Device_WiFiNetworkLost;
 
             Debug.WriteLine("Remaining Ram before initialize: " + GHIElectronics.TinyCLR.Native.Memory.FreeBytes + " used Bytes: " + GHIElectronics.TinyCLR.Native.Memory.UsedBytes);
@@ -275,9 +298,9 @@ namespace AzureDataSender_FEZ
             */
             #endregion
 
-            long totalMemory = GC.GetTotalMemory(true);
+            totalMemory = GC.GetTotalMemory(true);
             Debug.WriteLine("Total Memory: " + totalMemory.ToString());
-            Debug.WriteLine("Remaining Ram a end of main: " + GHIElectronics.TinyCLR.Native.Memory.FreeBytes + " used Bytes: " + GHIElectronics.TinyCLR.Native.Memory.UsedBytes);
+            Debug.WriteLine("Remaining Ram at end of main: " + GHIElectronics.TinyCLR.Native.Memory.FreeBytes + " used Bytes: " + GHIElectronics.TinyCLR.Native.Memory.UsedBytes);
 
 
             getSensorDataTimer = new System.Threading.Timer(new TimerCallback(getSensorDataTimer_tick), null, readInterval * 1000, 10 * 60 * 1000);
@@ -308,13 +331,18 @@ namespace AzureDataSender_FEZ
 
             myCloudStorageAccount = new CloudStorageAccount(storageAccountName, storageKey, useHttps: Azure_useHTTPS);
 
+            //Resources.GetBytes(Resources.BinaryResources.BaltimoreCyberTrustRoot)
+
+            //X509Certificate[] caCerts = new X509Certificate[] { new X509Certificate(caAzure) };
+            X509Certificate[] caCerts = new X509Certificate[] { new X509Certificate(Resources.GetBytes(Resources.BinaryResources.BaltimoreCyberTrustRoot)) };
+
             int yearOfSend = DateTime.Now.Year;
 
             #region Region Create analogTable if not exists
             HttpStatusCode resultTableCreate = HttpStatusCode.Ambiguous;
             if (AnalogCloudTableYear != yearOfSend)
             {
-                resultTableCreate = createTable(myCloudStorageAccount, analogTableName + DateTime.Today.Year.ToString());              
+                resultTableCreate = createTable(myCloudStorageAccount, caCerts, analogTableName + DateTime.Today.Year.ToString());              
             }
             // Set flag to indicate that table already exists, avoid trying to crea
             if ((resultTableCreate == HttpStatusCode.Created) || (resultTableCreate == HttpStatusCode.NoContent) || (resultTableCreate == HttpStatusCode.Conflict))
@@ -361,17 +389,27 @@ namespace AzureDataSender_FEZ
 
             AnalogTableEntity analogTableEntity = new AnalogTableEntity(partitionKey, reverseDate, propertiesAL);
 
-            string insertEtag = string.Empty;
-
-            HttpStatusCode insertResult = HttpStatusCode.BadRequest;
-            insertResult = insertTableEntity(myCloudStorageAccount, analogTableName + yearOfSend.ToString(), analogTableEntity, out insertEtag);
-            if (insertResult == HttpStatusCode.NoContent)
-            {
-                Debug.WriteLine(insertResult == HttpStatusCode.NoContent ? "Succeded to insert Entity\r\n" : "Failed to insert Entity\r\n");
-            }
-            
+            Debug.WriteLine("Going to upload. Sampletime:               " + sampleTime);
+            long totalMemory = GC.GetTotalMemory(true);
             long freeMemory = GHIElectronics.TinyCLR.Native.Memory.FreeBytes;
-            Debug.WriteLine("At end of Timer event. Total memory: " + GC.GetTotalMemory(true).ToString("N0") + " Free Memory: " + freeMemory);
+            Debug.WriteLine("Before 'insertTableEntity' command. Total Memory: " + totalMemory.ToString("N0") + "Free Bytes: " + freeMemory.ToString("N0"));
+            string insertEtag = string.Empty;
+            HttpStatusCode insertResult = HttpStatusCode.BadRequest;
+            
+            insertResult = insertTableEntity(myCloudStorageAccount, caCerts, analogTableName + yearOfSend.ToString(), analogTableEntity, out insertEtag);
+
+            if ((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict))
+            {
+                Debug.WriteLine(((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)) ? "Succeded to insert Entity\r\n" : "Failed to insert Entity\r\n");
+            }
+            else
+            {
+                Debug.WriteLine(((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)) ? "Succeded to insert Entity\r\n" : "Failed to insert Entity ****************************************************\r\n");
+            }
+
+            totalMemory = GC.GetTotalMemory(true);
+            freeMemory = GHIElectronics.TinyCLR.Native.Memory.FreeBytes;
+            Debug.WriteLine("At end of Timer event. Total memory: " + totalMemory.ToString("N0") + " Free Memory: " + freeMemory.ToString("N0"));
            
             writeAnalogToCloudTimer.Change(writeToCloudInterval * 1000, writeToCloudInterval * 1000);
 
@@ -379,6 +417,31 @@ namespace AzureDataSender_FEZ
             readLastAnalogRowTimer.Change(1000, Timeout.Infinite);
         }
         #endregion
+
+
+        #region Timer event readLastAnalogRowTimer_tick
+        private static void readLastAnalogRowTimer_tick(object state)
+        {
+            X509Certificate[] caCerts = new X509Certificate[] { new X509Certificate(Resources.GetBytes(Resources.BinaryResources.BaltimoreCyberTrustRoot)) };            
+            ArrayList queryResult = new ArrayList();
+            HttpStatusCode resultQuery = queryTableEntities(myCloudStorageAccount, caCerts, analogTableName + DateTime.Now.Year.ToString(), "$top=1", out queryResult);
+            if (resultQuery == HttpStatusCode.OK)
+            {
+                var entityHashtable = queryResult[0] as Hashtable;
+                var theRowKey = entityHashtable["RowKey"];
+                var SampleTime = entityHashtable["SampleTime"];
+                Debug.WriteLine("Entity read back from Azure, SampleTime: " + SampleTime);
+            }
+            else
+            {
+                Debug.WriteLine("Failed to read back last entity from Azure");
+            }
+
+            readLastAnalogRowTimer.Change(Timeout.Infinite, Timeout.Infinite);
+        }
+        #endregion
+
+
 
         #region TimerEvent getSensorDataTimer_tick
         private static void getSensorDataTimer_tick(object state)
@@ -397,26 +460,6 @@ namespace AzureDataSender_FEZ
         }
         #endregion
 
-        #region Timer event readLastAnalogRowTimer_tick
-        private static void readLastAnalogRowTimer_tick(object state)
-        {           
-            ArrayList queryResult = new ArrayList();
-            HttpStatusCode resultQuery = queryTableEntities(myCloudStorageAccount, analogTableName + DateTime.Now.Year.ToString(), "$top=1", out queryResult);
-            if (resultQuery == HttpStatusCode.OK)
-            {
-                var entityHashtable = queryResult[0] as Hashtable;
-                var theRowKey = entityHashtable["RowKey"];
-                var SampleTime = entityHashtable["SampleTime"];
-                Debug.WriteLine("Entity read back from Azure, SampleTime: " + SampleTime);
-            }
-            else
-            {
-                Debug.WriteLine("Failed to read back last entity from Azure");
-            }
-
-            readLastAnalogRowTimer.Change(Timeout.Infinite, Timeout.Infinite);
-        }
-        #endregion
 
         #region Region ReadAnalogSensors      
         private static double ReadAnalogSensor(int pAin)
@@ -485,10 +528,12 @@ namespace AzureDataSender_FEZ
             AzureStorageHelper.WiFiNetworkLost = e.WiFiNetworkLost;
         }
 
+        /*
         private static void WiFi_SPWF04S_Device_WiFiAssociationChanged(WiFi_SPWF04S_Mgr sender, WiFi_SPWF04S_Mgr.WiFiAssociationEventArgs e)
         {
             AzureStorageHelper.WiFiAssociationState = e.WiFiAssociationState ? true : false;
         }
+        */
 
         private static void WiFi_SPWF04S_Device_PendingSocketData(WiFi_SPWF04S_Mgr sender, WiFi_SPWF04S_Mgr.PendingDataEventArgs e)
         {
@@ -783,9 +828,9 @@ namespace AzureDataSender_FEZ
         // }
 
         #region private method insertTableEntity
-        private static HttpStatusCode insertTableEntity(CloudStorageAccount pCloudStorageAccount, string pTable, TableEntity pTableEntity, out string pInsertETag)
-        {
-            table = new TableClient(pCloudStorageAccount, caCerts, _debug, _debug_level, wifi);
+        private static HttpStatusCode insertTableEntity(CloudStorageAccount pCloudStorageAccount, X509Certificate[] pCaCerts, string pTable, TableEntity pTableEntity, out string pInsertETag)
+        {          
+            table = new TableClient(pCloudStorageAccount, pCaCerts, _debug, _debug_level, wifi);
             // To use Fiddler as WebProxy include the following line. Use the local IP-Address of the PC where Fiddler is running
             // see: -http://blog.devmobile.co.nz/2013/01/09/netmf-http-debugging-with-fiddler
 
@@ -801,9 +846,9 @@ namespace AzureDataSender_FEZ
         #endregion
 
         #region private method createTable
-        private static HttpStatusCode createTable(CloudStorageAccount pCloudStorageAccount, string pTableName)
-        {
-            table = new TableClient(pCloudStorageAccount, caCerts, _debug, _debug_level, wifi);
+        private static HttpStatusCode createTable(CloudStorageAccount pCloudStorageAccount, X509Certificate[] pCaCerts, string pTableName )
+        {           
+            table = new TableClient(pCloudStorageAccount, pCaCerts, _debug, _debug_level, wifi);
 
             // To use Fiddler as WebProxy include the following line. Use the local IP-Address of the PC where Fiddler is running
             // see: -http://blog.devmobile.co.nz/2013/01/09/netmf-http-debugging-with-fiddler
@@ -819,9 +864,9 @@ namespace AzureDataSender_FEZ
 
         #region private method queryTableEntities
         
-        private static HttpStatusCode queryTableEntities(CloudStorageAccount pCloudStorageAccount, string tableName, string query, out ArrayList queryResult)
+        private static HttpStatusCode queryTableEntities(CloudStorageAccount pCloudStorageAccount, X509Certificate[] pCaCerts, string tableName, string query, out ArrayList queryResult)
         {
-            table = new TableClient(pCloudStorageAccount, caCerts, _debug, _debug_level, wifi);
+            table = new TableClient(pCloudStorageAccount, pCaCerts, _debug, _debug_level, wifi);
 
 
             // To use Fiddler as WebProxy include the following line. Use the local IP-Address of the PC where Fiddler is running

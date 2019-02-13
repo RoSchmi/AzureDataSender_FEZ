@@ -79,7 +79,6 @@
     <Compile Include="RoSchmi\Net\Azure\Storage\TableClient.cs" />
     <Compile Include="RoSchmi\Net\Azure\Storage\TableEntity.cs" />
     <Compile Include="RoSchmi\Net\Azure\Storage\TableEntityProperty.cs" />
-    <Compile Include="RoSchmi\Net\WiFi_SPWF04S_Device.cs" />
     <Compile Include="RoSchmi\Net\WiFi_SPWF04S_Mgr.cs" />
     <Compile Include="RoSchmi\Utilities\BoyerMoore.cs" />
     <Compile Include="SampleValue.cs" />
@@ -94,6 +93,7 @@
     <Compile Include="SPWF04SX_Driver\SPWF04SxInterface.cs" />
     <Compile Include="SPWF04SX_Driver\SPWF04SxInterfaceRoSchmi.cs" />
     <Compile Include="TempEntity.cs" />
+    <Compile Include="Watchdog.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
