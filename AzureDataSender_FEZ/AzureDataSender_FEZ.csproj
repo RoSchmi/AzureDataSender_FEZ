@@ -100,6 +100,9 @@
     <None Include="Resources\DigiCert Baltimore Root.cer" />
   </ItemGroup>
   <ItemGroup>
+    <Reference Include="GHIElectronics.TinyCLR.Devices.Adc, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\GHIElectronics.TinyCLR.Devices.Adc.1.0.0\lib\net452\GHIElectronics.TinyCLR.Devices.Adc.dll</HintPath>
+    </Reference>
     <Reference Include="GHIElectronics.TinyCLR.Devices.Display, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\GHIElectronics.TinyCLR.Devices.Display.1.0.0\lib\net452\GHIElectronics.TinyCLR.Devices.Display.dll</HintPath>
     </Reference>

@@ -1,7 +1,7 @@
 // Copyright RoSchmi 2019 License Apache 2.0
 // Version 1.0 11.02.2019 for TinyCLR v1.0.0
 // Parts of the code were taken from
-// by AndyCross: netmfazurestorage / Table / TableClient.cs
+// AndyCross: netmfazurestorage / Table / TableClient.cs
 // -https://github.com/azure-contrib/netmfazurestorage/blob/master/netmfazurestorage/Table/TableClient.cs
 //
 // Other parts of the code are taken from martin calsyn
@@ -561,25 +561,20 @@ namespace RoSchmi.Net.Azure.Storage
                 resourceString = StringUtilities.Format("{1}()", _account.AccountName, tableName, partitionKey, rowKey);
             }
 
-            //var authorizationHeader = CreateTableAuthorizationHeader(payload, StringUtilities.Format("/{0}/{1}", _account.AccountName, resourceString), timestamp, HttpVerb, ContType.applicationIatomIxml, out ContentMD5, useSharedKeyLite);
             var authorizationHeader = CreateTableAuthorizationHeader(payload, StringUtilities.Format("/{0}/{1}", _account.AccountName, resourceString), timestamp, HttpVerb, ContType.applicationIatomIxml, out ContentMD5, out hashContentMD5, useSharedKeyLite);
-
-
-
-            // only for tests to provoke an authentication error
-            // var authorizationHeader = CreateTableAuthorizationHeader(payload, StringUtilities.Format("/{0}/{1}", "Hallo", resourceString), timestamp, HttpVerb, ContType.applicationIatomIxml, out ContentMD5, useSharedKeyLite);
 
             string TableEndPoint = _account.UriEndpoints["Table"].ToString();
 
             Uri uri = new Uri(TableEndPoint + "/" + resourceString + queryString);
 
-            var tableTypeHeaders = new Hashtable();
-            tableTypeHeaders.Add("MaxDataServiceVersion", "3.0;NetFx");
-            tableTypeHeaders.Add("Content-Type", contentType);
-            tableTypeHeaders.Add("DataServiceVersion", "3.0;NetFx");
-            tableTypeHeaders.Add("Content-MD5", ContentMD5);
-            // RoSchmi
-            tableTypeHeaders.Add("Accept", acceptType);
+            var tableTypeHeaders = new Hashtable
+            {
+                { "MaxDataServiceVersion", "3.0;NetFx" },
+                { "Content-Type", contentType },
+                { "DataServiceVersion", "3.0;NetFx" },
+                { "Content-MD5", ContentMD5 },
+                { "Accept", acceptType }
+            };
 
             if (_fiddlerIsAttached)
             { AzureStorageHelper.AttachFiddler(_fiddlerIsAttached, _fiddlerIP, _fiddlerPort); }
@@ -591,17 +586,18 @@ namespace RoSchmi.Net.Azure.Storage
                 AzureStorageHelper.SetDebugLevel(_debug_level);
                 response = AzureStorageHelper.SendWebRequest(wifi, caCerts, uri, authorizationHeader, timestamp, VersionHeader, payload, contentLength, HttpVerb, false, acceptType, tableTypeHeaders);
 
-                Debug.WriteLine(GC.GetTotalMemory(true).ToString("N0"));
+                long totalMemory = GC.GetTotalMemory(true);
+
+                _Print_Debug("Total Memory: " + totalMemory.ToString("N0"));
+               
 
                 ArrayList entities = new ArrayList();
-                if (response.Body.StartsWith("<?xml"))
+                if ((response.Body != null) && (response.Body.StartsWith("<?xml")))
                 {
-                    entities = ParseResponse(response.Body);
-                   
+                    entities = ParseResponse(response.Body);                  
                     _OperationResponseQueryList = entities;
-
                 }
-                    else if (response.Body.StartsWith("{\"odata.metadata\":"))
+                    else if ((response.Body != null) && (response.Body.StartsWith("{\"odata.metadata\":")))
                     {
                         throw new NotSupportedException("Json serialization is actually not supported");
                         //response.Body = response.Body.Substring(0, response.Body.Length - 7);

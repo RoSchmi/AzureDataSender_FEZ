@@ -258,7 +258,7 @@ namespace RoSchmi.Net.Azure.Storage
                         */
                         #endregion
 
-                        #region Wait 2 seconds for positive WifiAssociation or NetworkLost recovery
+                        #region Wait 2 seconds for recovery when Network lost and functioning WifiAssociation
                         int timeCtr = 0;
                         while (((WiFiAssociationState == false) || WiFiNetworkLost) && (timeCtr < 20 ))   // Wait 2 sec for WifiAssociation, if not there, return
                         {
@@ -276,7 +276,7 @@ namespace RoSchmi.Net.Azure.Storage
                         }
                         #endregion
 
-                        DateTime start = DateTime.UtcNow;
+                       
                         int id = -1;
                         timeCtr = 0;
                         int loopLimit = 15;     // max 15 retries
@@ -286,17 +286,15 @@ namespace RoSchmi.Net.Azure.Storage
                         {
                             totalMemory = GC.GetTotalMemory(true);
                             freeMemory = GHIElectronics.TinyCLR.Native.Memory.FreeBytes;
-                            Debug.WriteLine("Starting Send Webrequest. Total Memory: " + totalMemory.ToString() + "Free Bytes: " + freeMemory);
-
-
-                            //id = Program.wifi.OpenSocket(url.Host, port, SPWF04SxConnectionType.Tcp, securityType, "*.table.core.windows.net");
-
+                            Debug.WriteLine("Starting Send Webrequest. Total Memory: " + totalMemory.ToString() + "Free Bytes: " + freeMemory); 
+                            
                             #region try 1 second repeatedly to open socket (10 times)
                             id = -1;
                             int socketTimeCtr = 0;
-                            while ((id == -1) && (socketTimeCtr < 10))
+                            while ((id == -1) && (socketTimeCtr < 15))
                             {
                                 Debug.WriteLine("Going to open socket");
+                                Thread.Sleep(0);
                                 id = wifi.OpenSocket(url.Host, port, SPWF04SxConnectionType.Tcp, securityType);
                                 
                                 if (socketTimeCtr > 0)
@@ -322,9 +320,9 @@ namespace RoSchmi.Net.Azure.Storage
                             {
                                 wifi.WriteSocket(id, payload);
                             }
-                            for (int i = 0; i < 5; i++)    // wait for 500 ms for pending data
+                            for (int i = 0; i < 5; i++)    // wait for 1000 ms for pending data
                             {
-                                Thread.Sleep(100);
+                                Thread.Sleep(200);
                             }
                             
                             timeCtr++;
@@ -347,10 +345,7 @@ namespace RoSchmi.Net.Azure.Storage
                         timeCtr = 0;
 
                         totalMemory = GC.GetTotalMemory(true);
-                        freeMemory = GHIElectronics.TinyCLR.Native.Memory.FreeBytes;
-                        Debug.WriteLine("Total Memory: " + totalMemory.ToString() + "Free Bytes: " + freeMemory);
-
-
+                        
                         //while ((Program.wifi.QuerySocket(id) is var avail && avail > 0) || first || total < 120)
                         while (((wifi.QuerySocket(id) is var avail && avail > 0) || first || total < 120) && (timeCtr < 30))
                         {
@@ -369,13 +364,10 @@ namespace RoSchmi.Net.Azure.Storage
                             Thread.Sleep(100);
                             timeCtr++;
                         }
-                        Debug.WriteLine($"\r\nRead: {total:N0} in {(DateTime.UtcNow - start).TotalMilliseconds:N0}ms");
+                        
 
                         wifi.CloseSocket(id);
                         lastBuf = new byte[0];
-
-
-
 
                         totalMemory = GC.GetTotalMemory(true);
 
@@ -404,7 +396,6 @@ namespace RoSchmi.Net.Azure.Storage
 
 
                             // Print first line of response or all headers of response                       
-
                             searchSequence = new byte[] { 0x0D, 0x0A };
                             searcher = new BoyerMoore(searchSequence);
                             foundIdxArray = searcher.Search(totalBuf, false);
@@ -424,9 +415,7 @@ namespace RoSchmi.Net.Azure.Storage
                             */
 
                             totalMemory = GC.GetTotalMemory(true);
-                            freeMemory = GHIElectronics.TinyCLR.Native.Memory.FreeBytes;
-                            Debug.WriteLine("Total Memory before extract body: " + totalMemory.ToString() + "Free Bytes: " + freeMemory);
-
+                            
                             // extract start and end of body
                             int startOfBody = 0;
                             int endOfBody = 0;
@@ -455,18 +444,13 @@ namespace RoSchmi.Net.Azure.Storage
                                         httpStatCode = "300";
                                     }
                                     totalMemory = GC.GetTotalMemory(true);
-                                    freeMemory = GHIElectronics.TinyCLR.Native.Memory.FreeBytes;
-                                    Debug.WriteLine("Total Memory before encoding body: " + totalMemory.ToString() + "Free Bytes: " + freeMemory);
-                                    
+                                                                       
                                     responseBody = Encoding.UTF8.GetString(totalBuf, startOfBody, endOfBody - startOfBody);
                                     totalBuf = null;
 
                                     totalMemory = GC.GetTotalMemory(true);
-                                    freeMemory = GHIElectronics.TinyCLR.Native.Memory.FreeBytes;
-
-                                    Debug.WriteLine("Total Memory after encoding body: " + totalMemory.ToString() + "Free Bytes: " + freeMemory);
-
-                                   // Debug.WriteLine(responseBody);
+                                    
+                                    // Debug.WriteLine(responseBody);
                                 }
                                 else
                                 {
@@ -1050,6 +1034,8 @@ return new BasicHttpResponse() { ETag = null, Body = responseBody, StatusCode = 
 
         private static string PrepareSPWF04SxRequest(Uri url, string authHeader, string dateHeader, string versionHeader, byte[] fileBytes, int contentLength, string httpVerb, bool isSocketRequest,  bool expect100Continue = false, string acceptType = "application/json;odata=minimalmetadata", Hashtable additionalHeaders = null)
             {
+
+
             StringBuilder requ;
             if (isSocketRequest)
             {
@@ -1060,11 +1046,11 @@ return new BasicHttpResponse() { ETag = null, Body = responseBody, StatusCode = 
                 //requ = new StringBuilder(httpVerb + " " + url.AbsolutePath + " HTTP/1.1");
                 requ = new StringBuilder(httpVerb + " " + url.AbsoluteUri + " HTTP/1.1");
             }
-                    requ.Append("\r\n" + "User-Agent: " + "Http-Client");
-                    requ.Append("\r\n" + "x-ms-date: " + dateHeader);
-                    requ.Append("\r\n" + "x-ms-version: " + versionHeader);
-                    requ.Append("\r\n" + "Authorization: " + authHeader);
-
+            requ.Append("\r\nUser-Agent: " + "Http-Client" +
+                    "\r\nx-ms-date: " + dateHeader +
+                    "\r\nx-ms-version: " + versionHeader +
+                    "\r\nAuthorization: " + authHeader);
+                    
 
 
                     if (expect100Continue)
@@ -1079,9 +1065,14 @@ return new BasicHttpResponse() { ETag = null, Body = responseBody, StatusCode = 
                         }
                     }
                     // RoSchmi
-                    requ.Append("\r\n" + "Content-Length: " + contentLength.ToString());
+                    requ.Append("\r\nContent-Length: " + contentLength.ToString() +
+                        "\r\nConnection: Close\r\nHost: " + url.Host);
+
+            /*
+            requ.Append("\r\n" + "Content-Length: " + contentLength.ToString());
                     requ.Append("\r\n" + "Connection: " + "Close");
                     requ.Append("\r\n" + "Host: " + url.Host);
+                    */
 
             if (isSocketRequest)
             {
@@ -1092,9 +1083,9 @@ return new BasicHttpResponse() { ETag = null, Body = responseBody, StatusCode = 
             {
                 requ.Append("\r\n");
             }
-
-
-                    return requ.ToString();
+            long totalMemory = GC.GetTotalMemory(true);           
+            
+            return requ.ToString();
                 }
         /*
         private static string PrepareSPWF04SxRequest(Uri url, string authHeader, string dateHeader, string versionHeader, byte[] fileBytes, int contentLength, string httpVerb, bool expect100Continue = false, string acceptType = "application/json;odata=minimalmetadata", Hashtable additionalHeaders = null)

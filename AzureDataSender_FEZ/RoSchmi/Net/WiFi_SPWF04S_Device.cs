@@ -69,45 +69,27 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
             wiFiSPWF04S.ClearTlsServerRootCertificate();
             SPWF04SxWiFiState theState = SPWF04SxWiFiState.ScanInProgress;
-
+            Debug.WriteLine("Wait 15 sec, scanning...");
             for (int i = 0; i < 30; i++)    // Try for maximal time of 15 sec
-            {
-                try
-                {
+            {     
                     theState = wiFiSPWF04S.State;
                     Thread.Sleep(20);
-                    if (theState == SPWF04SxWiFiState.ReadyToTransmit)
-                    {
-                        Debug.WriteLine("TheState is: " + "(" + i * 500 + ") " + (int)theState + " " + StateToName(theState));
-                        break;
-                    }
-                    else
-                    {
-                        try
-                        {
-                            Debug.WriteLine("TheState is: " + "(" + i * 500 + ") " + (int)theState + " " + StateToName(theState));
-                        }
-                        catch
-                        {
-                            Debug.WriteLine("Error: SPWF04SxWiFiState is not defined: " + "(" + i * 500 + ") ");
-                        }
-                    }
-                }
-                catch (Exception ex)
+                if (theState == SPWF04SxWiFiState.ReadyToTransmit)
                 {
-                    Debug.WriteLine("Exception: " + "(" + i * 500 + ") " + ex.Message);
+                    Debug.WriteLine("St: (" + i * 500 + ") " + (int)theState + " " + StateToName(theState));
+                    break;
                 }
                 Thread.Sleep(500);
             }
-
-            try
-            {
-                wiFiSPWF04S.JoinNetwork(wiFiSSID, wiFiKey);
-            }
-            catch (Exception ex)
-            {
-                var message = ex.Message;
-            }
+            Debug.WriteLine("Scanning finished");
+            //try
+            //{
+            wiFiSPWF04S.JoinNetwork(wiFiSSID, wiFiKey);
+            //}
+            //catch (Exception ex)
+            //{
+            //    var message = ex.Message;
+            //}
             /*
             while (true)
             {
@@ -177,9 +159,8 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                             string[] splitDateTime = stringDateTime.Split(new char[] { ':' });
                             string[] splitDate = splitDateTime[0].Split(new char[] { '.' });
                             string[] splitTime = splitDateTime[2].Split(new char[] { '.' });
-                            dateTimeNtpServerDelivery = new DateTime(int.Parse(splitDate[0]), int.Parse(splitDate[1]), int.Parse(splitDate[2]), int.Parse(splitTime[0]), int.Parse(splitTime[1]), int.Parse(splitTime[2]));
-                            timeDeltaNTPServerDelivery = new TimeSpan(int.Parse(splitDateTime[1]));
-                            OnDateTimeNtpServerDelivered(this, new NTPServerDeliveryEventArgs(dateTimeNtpServerDelivery, timeDeltaNTPServerDelivery));
+                            dateTimeNtpServerDelivery = new DateTime(int.Parse(splitDate[0]), int.Parse(splitDate[1]), int.Parse(splitDate[2]), int.Parse(splitTime[0]), int.Parse(splitTime[1]), int.Parse(splitTime[2]));                   
+                            OnDateTimeNtpServerDelivered(this, new NTPServerDeliveryEventArgs(dateTimeNtpServerDelivery));
                         }
                         catch
                         {
@@ -410,25 +391,17 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         }
 
 
-            public class NTPServerDeliveryEventArgs : EventArgs
+        public class NTPServerDeliveryEventArgs : EventArgs
         {
-            /// <summary>
-            /// The timezone delta to uct
-            /// </summary>
-            /// 
-            public TimeSpan TimeDeltaNTPServer
-            { get; private set; }
-
             /// <summary>
             /// The Dateime delivered by the NTP-Server
             /// </summary>
             public DateTime DateTimeNTPServer
             { get; private set; }
 
-            internal NTPServerDeliveryEventArgs(DateTime pDateTimeNTPServer, TimeSpan pTimeDeltaNTPServer)
+            internal NTPServerDeliveryEventArgs(DateTime pDateTimeNTPServer)
             {
-                this.DateTimeNTPServer = pDateTimeNTPServer;
-                this.TimeDeltaNTPServer = pTimeDeltaNTPServer;
+                this.DateTimeNTPServer = pDateTimeNTPServer;              
             }
         }
         #endregion

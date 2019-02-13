@@ -694,42 +694,10 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                 .AddParameter(host)
                 .AddParameter(port.ToString())
                 .AddParameter(null)
-                .AddParameter(commonName ?? (connectionType == SPWF04SxConnectionType.Tcp ? (connectionSecurity == SPWF04SxConnectionSecurityType.Tls ? "s" : "t") : "u"))
-
-                /*
-                // Explanation by RoSchmi
-                //int? x = null;
-                // Set y to the value of x if x is NOT null; otherwise,
-                // if x == null, set y to -1.
-                //int y = x ?? -1;
-
-            if (commonName == null)
-                {
-                    .AddParameter(commonName);
-                }
-                else
-                {
-                     if (connectionType == SPWF04SxConnectionType.Tcp)
-                     {
-                        if (connectionSecurity == SPWF04SxConnectionSecurityType.Tls
-                        {
-                            .AddParameter("s");
-                        }
-                        else
-                        {
-                            .AddParameter("t");
-                        }
-
-                     }
-                     else
-                     {
-                        .AddParameter("u");
-                     }
-
-                }
-                */
+                .AddParameter(commonName ?? (connectionType == SPWF04SxConnectionType.Tcp ? (connectionSecurity == SPWF04SxConnectionSecurityType.Tls ? "s" : "t") : "u"))              
                 .Finalize(SPWF04SxCommandIds.SOCKON);
 
+            // Changed by RoSchmi
             SocketErrorHappened = false;
             this.EnqueueCommand(cmd);
             Thread.Sleep(0);
@@ -738,12 +706,10 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             if (!SocketErrorHappened)
             {
                 a = cmd.ReadString();
-                Thread.Sleep(0);
-                Debug.WriteLine("Successfully read a: " + a);
+                Thread.Sleep(0);               
                 if (!SocketErrorHappened)
                 {
-                    b = cmd.ReadString();
-                    Debug.WriteLine("1 a: " + a + " b " + b);
+                    b = cmd.ReadString();                   
                 }
                 Thread.Sleep(0);
                 if (connectionSecurity == SPWF04SxConnectionSecurityType.Tls && b.IndexOf("Loading:") == 0)
@@ -755,23 +721,22 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                     Thread.Sleep(0);
                     if (!SocketErrorHappened)
                     {
-                        b = cmd.ReadString();
-                        Debug.WriteLine("2 a: " + a.ToString() + " b " + b.ToString());
+                        b = cmd.ReadString();                      
                     }
                 }
                 else
                 {
-                    Debug.WriteLine("First read was not Loading:");
+                    Debug.WriteLine("First read was not 'Loading:'");
                 }
             }
-
             this.FinishCommand(cmd);
 
             if (SocketErrorHappened)
             {
-                Debug.WriteLine("Socket Error happened **************************************");
+                Debug.WriteLine("Socket Error happened **********************************************************");
             }
-            
+
+            Debug.WriteLine("Socket:" + a + " " + b);
             //return a.Split(':') is var result && result[0] == "On" ? int.Parse(result[2]) : throw new Exception("Request failed");
             return a.Split(':') is var result && result[0] == "On" ? int.Parse(result[2]) : - 1;
 
@@ -954,7 +919,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
                 if (hasIrq || hasWrite)
                 {
-                    syncWrite[0] = (byte)(!hasIrq && hasWrite ? 0x02 : 0x00);         // Write to SPWF04 module
+                    syncWrite[0] = (byte)(!hasIrq && hasWrite ? 0x02 : 0x00);         
 
                     this.spi.TransferFullDuplex(syncWrite, syncRead);
 
@@ -971,7 +936,6 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                                     Thread.Sleep(0);                           
                         }
                         
-
                         this.activeCommand.Sent = true;
                     }
                     else if (syncRead[0] == 0x02)                     
@@ -1004,8 +968,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
                             // Changes by RoSchmi
                             if (this.activeCommand == null || !this.activeCommand.Sent)
-                            {
-                                var dummy2 = 1;
+                            {                               
                                 Debug.WriteLine("Unexpected payload: Indication = " + ind.ToString());
 
                                 //throw new InvalidOperationException("Unexpected payload.");
@@ -1020,8 +983,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                             //    default://AT-S.ERROR x
                             //        break;
                             //}
-
-                            
+                           
                             switch (ind)
                             {
                                 
@@ -1043,31 +1005,31 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                                         //Debug.WriteLine("Indication: " + ind.ToString("X2") + " PayLoad = " + payloadLength.ToString());                                       
                                     }
                                     break; 
-                                case 0x2C:  // dez 44 wait for connection up
+                                case 0x2C:  // dec 44: wait for connection up
                                     {
                                         SocketErrorHappened = true;
                                         Debug.WriteLine("Indication: " + ind.ToString("X2") + " Wait for connection up " + " Pld = " + payloadLength.ToString());
                                     }
                                     break;
-                                case 0x38:  // dez 56 unable to delete file ?
+                                case 0x38:  // dec 56: Unable to delete file ?
                                     {                                      
                                         Debug.WriteLine("Ind: " + ind.ToString("X2") + " Unable to delete file" + " Pld = " + payloadLength.ToString());                                       
                                     }
                                     break;
-                                case 0x41:  // dez 65 DNS Address Failure
+                                case 0x41:  // dez 65: DNS Address Failure
                                     {                                       
                                         SocketErrorHappened = true;
                                         Debug.WriteLine("Indication: " + ind.ToString("X2") + " DNS Address failed " + " Pld = " + payloadLength.ToString());
                                     }
                                     break;
 
-                                case 0x4A:   // dez 77 failed to open socket  
+                                case 0x4A:   // dec 77: Failed to open socket  
                                     {
                                         SocketErrorHappened = true;
                                         Debug.WriteLine("Ind: " + ind.ToString("X2") + " Failed to open socket " + " Pld = " + payloadLength.ToString());                                       
                                     }
                                     break;
-                                case 0x4C:   // dez 79 Write failed
+                                case 0x4C:   // dec 79: Write failed
                                     {
                                         Debug.WriteLine("Ind: " + ind.ToString("X2") + " Write failed " + " Pld = " + payloadLength.ToString());                                       
                                     }
