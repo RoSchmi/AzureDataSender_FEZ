@@ -80,6 +80,7 @@
     <Compile Include="RoSchmi\Net\Azure\Storage\TableEntity.cs" />
     <Compile Include="RoSchmi\Net\Azure\Storage\TableEntityProperty.cs" />
     <Compile Include="RoSchmi\Net\WiFi_SPWF04S_Device.cs" />
+    <Compile Include="RoSchmi\Net\WiFi_SPWF04S_Mgr.cs" />
     <Compile Include="RoSchmi\Utilities\BoyerMoore.cs" />
     <Compile Include="SampleValue.cs" />
     <Compile Include="Security\HMACMD5.cs" />

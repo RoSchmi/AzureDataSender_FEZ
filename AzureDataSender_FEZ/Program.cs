@@ -122,7 +122,7 @@ namespace AzureDataSender_FEZ
         //public static ISPWF04SxInterface wifi;
 
 
-        private static WiFi_SPWF04S_Device wiFi_SPWF04S_Device;
+        private static WiFi_SPWF04S_Mgr wiFi_SPWF04S_Mgr;
 
         private static DateTime dateTimeNtpServerDelivery = DateTime.MinValue;
         
@@ -191,19 +191,19 @@ namespace AzureDataSender_FEZ
 
             wifi = new SPWF04SxInterfaceRoSchmi(spi, irq, reset);
          
-            wiFi_SPWF04S_Device = new WiFi_SPWF04S_Device(wifi, wiFiSSID_1, wiFiKey_1);
+            wiFi_SPWF04S_Mgr = new WiFi_SPWF04S_Mgr(wifi, wiFiSSID_1, wiFiKey_1);
 
 
-            wiFi_SPWF04S_Device.PendingSocketData += WiFi_SPWF04S_Device_PendingSocketData;
-            wiFi_SPWF04S_Device.SocketWasClosed += WiFi_SPWF04S_Device_SocketWasClosed;
-            wiFi_SPWF04S_Device.Ip4AddressAssigned += WiFi_SPWF04S_Device_Ip4AddressAssigned;
-            wiFi_SPWF04S_Device.DateTimeNtpServerDelivered += WiFi_SPWF04S_Device_DateTimeNtpServerDelivered;
-            wiFi_SPWF04S_Device.WiFiAssociationChanged += WiFi_SPWF04S_Device_WiFiAssociationChanged;
-            wiFi_SPWF04S_Device.WiFiNetworkLost += WiFi_SPWF04S_Device_WiFiNetworkLost;
+            wiFi_SPWF04S_Mgr.PendingSocketData += WiFi_SPWF04S_Device_PendingSocketData;
+            wiFi_SPWF04S_Mgr.SocketWasClosed += WiFi_SPWF04S_Device_SocketWasClosed;
+            wiFi_SPWF04S_Mgr.Ip4AddressAssigned += WiFi_SPWF04S_Device_Ip4AddressAssigned;
+            wiFi_SPWF04S_Mgr.DateTimeNtpServerDelivered += WiFi_SPWF04S_Device_DateTimeNtpServerDelivered;
+            wiFi_SPWF04S_Mgr.WiFiAssociationChanged += WiFi_SPWF04S_Device_WiFiAssociationChanged;
+            wiFi_SPWF04S_Mgr.WiFiNetworkLost += WiFi_SPWF04S_Device_WiFiNetworkLost;
 
             Debug.WriteLine("Remaining Ram before initialize: " + GHIElectronics.TinyCLR.Native.Memory.FreeBytes + " used Bytes: " + GHIElectronics.TinyCLR.Native.Memory.UsedBytes);
 
-            wiFi_SPWF04S_Device.Initialize();
+            wiFi_SPWF04S_Mgr.Initialize();
            
             myCloudStorageAccount = new CloudStorageAccount(storageAccountName, storageKey, useHttps: Azure_useHTTPS);
 
@@ -480,27 +480,27 @@ namespace AzureDataSender_FEZ
 
 
         #region Region Eventhandler
-        private static void WiFi_SPWF04S_Device_WiFiNetworkLost(WiFi_SPWF04S_Device sender, WiFi_SPWF04S_Device.WiFiNetworkLostEventArgs e)
+        private static void WiFi_SPWF04S_Device_WiFiNetworkLost(WiFi_SPWF04S_Mgr sender, WiFi_SPWF04S_Mgr.WiFiNetworkLostEventArgs e)
         {
             AzureStorageHelper.WiFiNetworkLost = e.WiFiNetworkLost;
         }
 
-        private static void WiFi_SPWF04S_Device_WiFiAssociationChanged(WiFi_SPWF04S_Device sender, WiFi_SPWF04S_Device.WiFiAssociationEventArgs e)
+        private static void WiFi_SPWF04S_Device_WiFiAssociationChanged(WiFi_SPWF04S_Mgr sender, WiFi_SPWF04S_Mgr.WiFiAssociationEventArgs e)
         {
             AzureStorageHelper.WiFiAssociationState = e.WiFiAssociationState ? true : false;
         }
 
-        private static void WiFi_SPWF04S_Device_PendingSocketData(WiFi_SPWF04S_Device sender, WiFi_SPWF04S_Device.PendingDataEventArgs e)
+        private static void WiFi_SPWF04S_Device_PendingSocketData(WiFi_SPWF04S_Mgr sender, WiFi_SPWF04S_Mgr.PendingDataEventArgs e)
         {
             AzureStorageHelper.SocketDataPending = e.SocketDataPending;
         }
 
-        private static void WiFi_SPWF04S_Device_SocketWasClosed(WiFi_SPWF04S_Device sender, WiFi_SPWF04S_Device.SocketClosedEventArgs e)
+        private static void WiFi_SPWF04S_Device_SocketWasClosed(WiFi_SPWF04S_Mgr sender, WiFi_SPWF04S_Mgr.SocketClosedEventArgs e)
         {
             AzureStorageHelper.SocketWasClosed = e.SocketIsClosed;
         }
 
-        private static void WiFi_SPWF04S_Device_Ip4AddressAssigned(WiFi_SPWF04S_Device sender, WiFi_SPWF04S_Device.Ip4AssignedEventArgs e)
+        private static void WiFi_SPWF04S_Device_Ip4AddressAssigned(WiFi_SPWF04S_Mgr sender, WiFi_SPWF04S_Mgr.Ip4AssignedEventArgs e)
         {
             lock (LockProgram)
             {
@@ -509,7 +509,7 @@ namespace AzureDataSender_FEZ
             }
         }
 
-        private static void WiFi_SPWF04S_Device_DateTimeNtpServerDelivered(WiFi_SPWF04S_Device sender, WiFi_SPWF04S_Device.NTPServerDeliveryEventArgs e)
+        private static void WiFi_SPWF04S_Device_DateTimeNtpServerDelivered(WiFi_SPWF04S_Mgr sender, WiFi_SPWF04S_Mgr.NTPServerDeliveryEventArgs e)
         {
             lock (LockProgram)
             {

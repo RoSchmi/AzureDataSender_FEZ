@@ -12,9 +12,8 @@ using RoSchmi.Interfaces;
 
 namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 {
-    class WiFi_SPWF04S_Device
+    class WiFi_SPWF04S_Mgr
     {
-       /*
         private static SPWF04SxInterfaceRoSchmi wiFiSPWF04S;
         //private static ISPWF04SxInterface wiFiSPWF04S;
 
@@ -32,8 +31,8 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         public IPAddress WiFiIPAddress { get { return iPAddress; } }
 
 
-        public WiFi_SPWF04S_Device(SPWF04SxInterfaceRoSchmi pWiFiSPWF04S, string pWifiSSID, string pWifiKey)
-        //public WiFi_SPWF04S_Device(ISPWF04SxInterface pWiFiSPWF04S, string pWifiSSID, string pWifiKey)
+        public WiFi_SPWF04S_Mgr(SPWF04SxInterfaceRoSchmi pWiFiSPWF04S, string pWifiSSID, string pWifiKey)
+        //public WiFi_SPWF04S_Mgr(ISPWF04SxInterface pWiFiSPWF04S, string pWifiSSID, string pWifiKey)
         {
             wiFiSPWF04S = pWiFiSPWF04S;
             wiFiSSID = pWifiSSID;
@@ -42,7 +41,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
         public void Initialize()
         {
-            
+
             wiFiSPWF04S.IndicationReceived += WiFiSPWF04S_IndicationReceived;   //  (s, e) => { Debug.WriteLine($"WIND: {WindToName(e.Indication)} {e.Message}"); this.resetEventWiFiConnected.Set();};
 
             wiFiSPWF04S.ErrorReceived += (s, e) => Debug.WriteLine($"ERROR: {e.Error} {e.Message}");
@@ -72,9 +71,9 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             SPWF04SxWiFiState theState = SPWF04SxWiFiState.ScanInProgress;
             Debug.WriteLine("Wait 15 sec, scanning...");
             for (int i = 0; i < 30; i++)    // Try for maximal time of 15 sec
-            {     
-                    theState = wiFiSPWF04S.State;
-                    Thread.Sleep(20);
+            {
+                theState = wiFiSPWF04S.State;
+                Thread.Sleep(20);
                 if (theState == SPWF04SxWiFiState.ReadyToTransmit)
                 {
                     Debug.WriteLine("St: (" + i * 500 + ") " + (int)theState + " " + StateToName(theState));
@@ -83,10 +82,20 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                 Thread.Sleep(500);
             }
             Debug.WriteLine("Scanning finished");
-            
+            //try
+            //{
             wiFiSPWF04S.JoinNetwork(wiFiSSID, wiFiKey);
-           
-           
+            //}
+            //catch (Exception ex)
+            //{
+            //    var message = ex.Message;
+            //}
+            /*
+            while (true)
+            {
+                Thread.Sleep(100);
+            }
+            */
         }
 
         #region IndicationReceived
@@ -150,7 +159,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                             string[] splitDateTime = stringDateTime.Split(new char[] { ':' });
                             string[] splitDate = splitDateTime[0].Split(new char[] { '.' });
                             string[] splitTime = splitDateTime[2].Split(new char[] { '.' });
-                            dateTimeNtpServerDelivery = new DateTime(int.Parse(splitDate[0]), int.Parse(splitDate[1]), int.Parse(splitDate[2]), int.Parse(splitTime[0]), int.Parse(splitTime[1]), int.Parse(splitTime[2]));                   
+                            dateTimeNtpServerDelivery = new DateTime(int.Parse(splitDate[0]), int.Parse(splitDate[1]), int.Parse(splitDate[2]), int.Parse(splitTime[0]), int.Parse(splitTime[1]), int.Parse(splitTime[2]));
                             OnDateTimeNtpServerDelivered(this, new NTPServerDeliveryEventArgs(dateTimeNtpServerDelivery));
                         }
                         catch
@@ -170,9 +179,9 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         /// <summary>        
         /// The delegate that is used to handle the WiFiNetworkLost events.
         /// </summary>
-        /// <param name="sender">The <see cref="WiFi_SPWF04S_Device"/> object that raised the event.</param>
+        /// <param name="sender">The <see cref="WiFi_SPWF04S_Mgr"/> object that raised the event.</param>
         /// <param name="e">The event arguments.</param>        
-        public delegate void WiFiNetworkLostEventHandler(WiFi_SPWF04S_Device sender, WiFiNetworkLostEventArgs e);
+        public delegate void WiFiNetworkLostEventHandler(WiFi_SPWF04S_Mgr sender, WiFiNetworkLostEventArgs e);
 
         /// <summary>
         /// Raised when data are pending.
@@ -180,7 +189,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         public event WiFiNetworkLostEventHandler WiFiNetworkLost;
         private WiFiNetworkLostEventHandler onWiFiNetworkLostEvent;
 
-        private void OnWiFiNetworkLostEvent(WiFi_SPWF04S_Device sender, WiFiNetworkLostEventArgs e)
+        private void OnWiFiNetworkLostEvent(WiFi_SPWF04S_Mgr sender, WiFiNetworkLostEventArgs e)
         {
             if (this.onWiFiNetworkLostEvent == null)
             {
@@ -188,21 +197,21 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             }
             this.WiFiNetworkLost(sender, e);
         }
-       
-        
+
+
         /// <summary>        
         /// The delegate that is used to handle the WiFiAssociation event
-        /// <param name="sender">The <see cref="WiFi_SPWF04S_Device"/> object that raised the event.</param>
+        /// <param name="sender">The <see cref="WiFi_SPWF04S_Mgr"/> object that raised the event.</param>
         /// <param name="e">The event arguments.</param>        
-        public delegate void WiFiAssociationEventHandler(WiFi_SPWF04S_Device sender, WiFiAssociationEventArgs e);
-        
+        public delegate void WiFiAssociationEventHandler(WiFi_SPWF04S_Mgr sender, WiFiAssociationEventArgs e);
+
         /// <summary>
         /// Raised when data are pending.
         /// </summary>
         public event WiFiAssociationEventHandler WiFiAssociationChanged;
         private WiFiAssociationEventHandler onWiFiAssociationEvent;
 
-        private void OnWiFiAssociationEvent(WiFi_SPWF04S_Device sender, WiFiAssociationEventArgs e)
+        private void OnWiFiAssociationEvent(WiFi_SPWF04S_Mgr sender, WiFiAssociationEventArgs e)
         {
             if (this.onWiFiAssociationEvent == null)
             {
@@ -215,9 +224,9 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         /// <summary>        
         /// The delegate that is used to handle the Pending Data event.
         /// </summary>
-        /// <param name="sender">The <see cref="WiFi_SPWF04S_Device"/> object that raised the event.</param>
+        /// <param name="sender">The <see cref="WiFi_SPWF04S_Mgr"/> object that raised the event.</param>
         /// <param name="e">The event arguments.</param>        
-        public delegate void PendingDataEventHandler(WiFi_SPWF04S_Device sender, PendingDataEventArgs e);
+        public delegate void PendingDataEventHandler(WiFi_SPWF04S_Mgr sender, PendingDataEventArgs e);
 
         /// <summary>
         /// Raised when data are pending.
@@ -225,7 +234,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         public event PendingDataEventHandler PendingSocketData;
         private PendingDataEventHandler onPendingData;
 
-        private void OnPendingData(WiFi_SPWF04S_Device sender, PendingDataEventArgs e)
+        private void OnPendingData(WiFi_SPWF04S_Mgr sender, PendingDataEventArgs e)
         {
             if (this.onPendingData == null)
             {
@@ -240,9 +249,9 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         /// <summary>        
         /// The delegate that is used to handle the SocketClosed event.
         /// </summary>
-        /// <param name="sender">The <see cref="WiFi_SPWF04S_Device"/> object that raised the event.</param>
+        /// <param name="sender">The <see cref="WiFi_SPWF04S_Mgr"/> object that raised the event.</param>
         /// <param name="e">The event arguments.</param>        
-        public delegate void SocketClosedEventHandler(WiFi_SPWF04S_Device sender, SocketClosedEventArgs e);
+        public delegate void SocketClosedEventHandler(WiFi_SPWF04S_Mgr sender, SocketClosedEventArgs e);
 
         /// <summary>
         /// Raised when the Socket was closed.
@@ -250,7 +259,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         public event SocketClosedEventHandler SocketWasClosed;
         private SocketClosedEventHandler onSocketClosed;
 
-        private void OnSocketClosed(WiFi_SPWF04S_Device sender, SocketClosedEventArgs e)
+        private void OnSocketClosed(WiFi_SPWF04S_Mgr sender, SocketClosedEventArgs e)
         {
             if (this.onSocketClosed == null)
             {
@@ -262,9 +271,9 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         /// <summary>        
         /// The delegate that is used to handle the IP4 Address received event.
         /// </summary>
-        /// <param name="sender">The <see cref="WiFi_SPWF04S_Device"/> object that raised the event.</param>
+        /// <param name="sender">The <see cref="WiFi_SPWF04S_Mgr"/> object that raised the event.</param>
         /// <param name="e">The event arguments.</param>        
-        public delegate void Ip4AssignedEventHandler(WiFi_SPWF04S_Device sender, Ip4AssignedEventArgs e);
+        public delegate void Ip4AssignedEventHandler(WiFi_SPWF04S_Mgr sender, Ip4AssignedEventArgs e);
 
 
         /// <summary>
@@ -274,7 +283,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
         private Ip4AssignedEventHandler onIp4AddressAssigned;
 
-        private void OnIp4AddressAssigned(WiFi_SPWF04S_Device sender, Ip4AssignedEventArgs e)
+        private void OnIp4AddressAssigned(WiFi_SPWF04S_Mgr sender, Ip4AssignedEventArgs e)
         {
             if (this.onIp4AddressAssigned == null)
             {
@@ -286,9 +295,9 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         /// <summary>        
         /// The delegate that is used to handle the DateTimeNtpServerDeliveryEvent event.
         /// </summary>
-        /// <param name="sender">The <see cref="WiFi_SPWF04S_Device"/> object that raised the event.</param>
+        /// <param name="sender">The <see cref="WiFi_SPWF04S_Mgr"/> object that raised the event.</param>
         /// <param name="e">The event arguments.</param>        
-        public delegate void DateTimeNtpServerDeliveryEventHandler(WiFi_SPWF04S_Device sender, NTPServerDeliveryEventArgs e);
+        public delegate void DateTimeNtpServerDeliveryEventHandler(WiFi_SPWF04S_Mgr sender, NTPServerDeliveryEventArgs e);
 
         /// <summary>
         /// Raised when the NTP Server delivers a DateTime.
@@ -297,7 +306,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
         private DateTimeNtpServerDeliveryEventHandler onDateTimeNtpServerDelivered;
 
-        private void OnDateTimeNtpServerDelivered(WiFi_SPWF04S_Device sender, NTPServerDeliveryEventArgs e)
+        private void OnDateTimeNtpServerDelivered(WiFi_SPWF04S_Mgr sender, NTPServerDeliveryEventArgs e)
         {
             if (this.onDateTimeNtpServerDelivered == null)
             {
@@ -322,7 +331,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                 this.WiFiNetworkLost = pWiFiNetworkLost;
             }
         }
-       
+
         public class WiFiAssociationEventArgs : EventArgs
         {
             /// <summary>
@@ -353,7 +362,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
 
 
-        public class SocketClosedEventArgs :EventArgs
+        public class SocketClosedEventArgs : EventArgs
         {
             /// <summary>
             /// Indicates that Socket was closed
@@ -376,7 +385,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             { get; private set; }
             internal Ip4AssignedEventArgs(IPAddress pIp4Address)
             {
-                this.Ip4Address = pIp4Address;               
+                this.Ip4Address = pIp4Address;
             }
 
         }
@@ -392,7 +401,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
             internal NTPServerDeliveryEventArgs(DateTime pDateTimeNTPServer)
             {
-                this.DateTimeNTPServer = pDateTimeNTPServer;              
+                this.DateTimeNTPServer = pDateTimeNTPServer;
             }
         }
         #endregion
@@ -591,7 +600,8 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             }
         }
         #endregion
-     */
+
+
+
     }
 }
-

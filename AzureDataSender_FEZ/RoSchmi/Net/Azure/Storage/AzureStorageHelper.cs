@@ -294,7 +294,7 @@ namespace RoSchmi.Net.Azure.Storage
                             while ((id == -1) && (socketTimeCtr < 15))
                             {
                                 Debug.WriteLine("Going to open socket");
-                                Thread.Sleep(0);
+                                totalMemory = GC.GetTotalMemory(true);
                                 id = wifi.OpenSocket(url.Host, port, SPWF04SxConnectionType.Tcp, securityType);
                                 
                                 if (socketTimeCtr > 0)
@@ -313,8 +313,9 @@ namespace RoSchmi.Net.Azure.Storage
                             #endregion
 
                             Debug.WriteLine("Succeeded to open socket on try: " + socketTimeCtr.ToString());
-                            SocketDataPending = false;
 
+                            totalMemory = GC.GetTotalMemory(true);
+                            SocketDataPending = false;
                             wifi.WriteSocket(id, requestBinary);
                             if (httpVerb == "POST")
                             {
