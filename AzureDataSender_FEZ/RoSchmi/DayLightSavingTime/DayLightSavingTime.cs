@@ -87,15 +87,22 @@ namespace RoSchmi.DayLightSavingTime
             }
         }
 
-
+        /*
         private static string[] Months = new string[] { "???", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
         private static string[] Days = new string[] { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+        */
+
+        private static string[] Months; 
+        private static string[] Days;  
 
         //  decode dstDateStrings into DateTimes:    "Mth Day>=n" or "Mth lastDay"
         //   e.g. "Mar Sun>=8", "Nov Sun>=1", "Oct Sun>=1", "Apr Sun>=1", "Oct lastSun", "Feb 26"
         //        to change the time, append " @dd":  "Mar Sun>=8 @2" (US start)  "Mar lastSun @1" (EU start)
         private static DateTime GetDstDate(string dstDateString, DateTime today)
         {
+            Months = new string[] { "???", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+            Days = new string[] { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+
             // adjust for exact time of change if not 2
             int timeOfChange = 2; // hours
             int spaceAt = dstDateString.IndexOf(" @");

@@ -4,7 +4,7 @@ using System.Text;
 using System.Threading;
 using RoSchmi.Net.Azure.Storage;
 using AzureDataSender_FEZ;
-using PervasiveDigital.Json;
+//using PervasiveDigital.Json;
 
 namespace AzureDataSender_FEZ
 {
@@ -35,7 +35,7 @@ namespace AzureDataSender_FEZ
                 T_3 = ((string[])this.Properties[3])[2],
                 T_4 = ((string[])this.Properties[4])[2],
             };
-          this.JsonString = JsonConverter.Serialize(myProperties).ToString();
+        //  this.JsonString = JsonConverter.Serialize(myProperties).ToString();
         }
 
         private class PropertyClass

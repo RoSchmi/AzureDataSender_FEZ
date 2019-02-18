@@ -2,12 +2,6 @@
 using System.Collections;
 using System.Text;
 using System.Threading;
-
-using System;
-using System.Collections;
-using System.Text;
-using System.Resources;
-using System.Threading;
 using System.Diagnostics;
 using System.Net;
 using System.Net.NetworkInterface;
@@ -21,9 +15,7 @@ using GHIElectronics.TinyCLR.Pins;
 using GHIElectronics.TinyCLR.Storage.Streams;
 using RoSchmi.Net;
 using RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx;
-
 using RoSchmi.Net.Azure.Storage;
-using AzureDataSender_FEZ.TableStorage;
 using AzureDataSender_FEZ;
 using RoSchmi.DayLightSavingTime;
 using GHIElectronics.TinyCLR.Native;

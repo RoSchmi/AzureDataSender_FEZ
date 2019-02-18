@@ -157,7 +157,10 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                                 OnIp4AddressAssigned(this, new Ip4AssignedEventArgs(iPAddress));
                             }
                             catch
-                            { }
+                            {
+                                Debug.WriteLine("Parse Ip Error");
+
+                            }
                         }
                     }
                     break;
@@ -450,13 +453,13 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
                 case SPWF04SxIndication.WatchdogRunning: return nameof(SPWF04SxIndication.WatchdogRunning);
 
-                case SPWF04SxIndication.LowMemory: return nameof(SPWF04SxIndication.LowMemory);
+                //case SPWF04SxIndication.LowMemory: return nameof(SPWF04SxIndication.LowMemory);
 
-                case SPWF04SxIndication.WiFiHardwareFailure: return nameof(SPWF04SxIndication.WiFiHardwareFailure);
+                //case SPWF04SxIndication.WiFiHardwareFailure: return nameof(SPWF04SxIndication.WiFiHardwareFailure);
 
-                case SPWF04SxIndication.ConfigurationFailure: return nameof(SPWF04SxIndication.ConfigurationFailure);
+                //case SPWF04SxIndication.ConfigurationFailure: return nameof(SPWF04SxIndication.ConfigurationFailure);
 
-                case SPWF04SxIndication.HardFault: return nameof(SPWF04SxIndication.HardFault);
+                //case SPWF04SxIndication.HardFault: return nameof(SPWF04SxIndication.HardFault);
 
                 case SPWF04SxIndication.StackOverflow: return nameof(SPWF04SxIndication.StackOverflow);
 
@@ -484,7 +487,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
                 case SPWF04SxIndication.WiFiScanning: return nameof(SPWF04SxIndication.WiFiScanning);
 
-                case SPWF04SxIndication.ScanBlewUp: return nameof(SPWF04SxIndication.ScanBlewUp);
+                //case SPWF04SxIndication.ScanBlewUp: return nameof(SPWF04SxIndication.ScanBlewUp);
 
                 case SPWF04SxIndication.ScanFailed: return nameof(SPWF04SxIndication.ScanFailed);
 
@@ -498,13 +501,13 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
                 case SPWF04SxIndication.StationAssociated: return nameof(SPWF04SxIndication.StationAssociated);
 
-                case SPWF04SxIndication.DhcpReply: return nameof(SPWF04SxIndication.DhcpReply);
+                //case SPWF04SxIndication.DhcpReply: return nameof(SPWF04SxIndication.DhcpReply);
 
                 case SPWF04SxIndication.WiFiBssLost: return nameof(SPWF04SxIndication.WiFiBssLost);
 
-                case SPWF04SxIndication.WiFiException: return nameof(SPWF04SxIndication.WiFiException);
+                //case SPWF04SxIndication.WiFiException: return nameof(SPWF04SxIndication.WiFiException);
 
-                case SPWF04SxIndication.WiFiHardwareStarted: return nameof(SPWF04SxIndication.WiFiHardwareStarted);
+                //case SPWF04SxIndication.WiFiHardwareStarted: return nameof(SPWF04SxIndication.WiFiHardwareStarted);
 
                 case SPWF04SxIndication.WiFiNetwork: return nameof(SPWF04SxIndication.WiFiNetwork);
 
@@ -514,21 +517,21 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
                 case SPWF04SxIndication.WiFiUnhandledIndication: return nameof(SPWF04SxIndication.WiFiUnhandledIndication);
 
-                case SPWF04SxIndication.WiFiPoweredDown: return nameof(SPWF04SxIndication.WiFiPoweredDown);
+                //case SPWF04SxIndication.WiFiPoweredDown: return nameof(SPWF04SxIndication.WiFiPoweredDown);
 
-                case SPWF04SxIndication.HWInMiniAPMode: return nameof(SPWF04SxIndication.HWInMiniAPMode);
+                //case SPWF04SxIndication.HWInMiniAPMode: return nameof(SPWF04SxIndication.HWInMiniAPMode);
 
                 case SPWF04SxIndication.WiFiDeauthentication: return nameof(SPWF04SxIndication.WiFiDeauthentication);
 
                 case SPWF04SxIndication.WiFiDisassociation: return nameof(SPWF04SxIndication.WiFiDisassociation);
 
-                case SPWF04SxIndication.WiFiUnhandledManagement: return nameof(SPWF04SxIndication.WiFiUnhandledManagement);
+                //case SPWF04SxIndication.WiFiUnhandledManagement: return nameof(SPWF04SxIndication.WiFiUnhandledManagement);
 
-                case SPWF04SxIndication.WiFiUnhandledData: return nameof(SPWF04SxIndication.WiFiUnhandledData);
+                //case SPWF04SxIndication.WiFiUnhandledData: return nameof(SPWF04SxIndication.WiFiUnhandledData);
 
-                case SPWF04SxIndication.WiFiUnknownFrame: return nameof(SPWF04SxIndication.WiFiUnknownFrame);
+                //case SPWF04SxIndication.WiFiUnknownFrame: return nameof(SPWF04SxIndication.WiFiUnknownFrame);
 
-                case SPWF04SxIndication.Dot11Illegal: return nameof(SPWF04SxIndication.Dot11Illegal);
+                //case SPWF04SxIndication.Dot11Illegal: return nameof(SPWF04SxIndication.Dot11Illegal);
 
                 case SPWF04SxIndication.WpaCrunchingPsk: return nameof(SPWF04SxIndication.WpaCrunchingPsk);               
 
@@ -538,13 +541,13 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
                 case SPWF04SxIndication.WpaHandshakeComplete: return nameof(SPWF04SxIndication.WpaHandshakeComplete);
 
-                case SPWF04SxIndication.GpioInterrupt: return nameof(SPWF04SxIndication.GpioInterrupt);
+                //case SPWF04SxIndication.GpioInterrupt: return nameof(SPWF04SxIndication.GpioInterrupt);
 
-                case SPWF04SxIndication.Wakeup: return nameof(SPWF04SxIndication.Wakeup);
+                //case SPWF04SxIndication.Wakeup: return nameof(SPWF04SxIndication.Wakeup);
 
                 case SPWF04SxIndication.PendingData: return nameof(SPWF04SxIndication.PendingData);
 
-                case SPWF04SxIndication.InputToRemote: return nameof(SPWF04SxIndication.InputToRemote);
+                //case SPWF04SxIndication.InputToRemote: return nameof(SPWF04SxIndication.InputToRemote);
 
                 case SPWF04SxIndication.OutputFromRemote: return nameof(SPWF04SxIndication.OutputFromRemote);
 
@@ -556,23 +559,23 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
                 case SPWF04SxIndication.SocketDroppingData: return nameof(SPWF04SxIndication.SocketDroppingData);
 
-                case SPWF04SxIndication.RemoteConfiguration: return nameof(SPWF04SxIndication.RemoteConfiguration);
+                //case SPWF04SxIndication.RemoteConfiguration: return nameof(SPWF04SxIndication.RemoteConfiguration);
 
                 case SPWF04SxIndication.FactoryReset: return nameof(SPWF04SxIndication.FactoryReset);
 
-                case SPWF04SxIndication.LowPowerMode: return nameof(SPWF04SxIndication.LowPowerMode);
+                //case SPWF04SxIndication.LowPowerMode: return nameof(SPWF04SxIndication.LowPowerMode);
 
-                case SPWF04SxIndication.GoingIntoStandby: return nameof(SPWF04SxIndication.GoingIntoStandby);
+                //case SPWF04SxIndication.GoingIntoStandby: return nameof(SPWF04SxIndication.GoingIntoStandby);
 
-                case SPWF04SxIndication.ResumingFromStandby: return nameof(SPWF04SxIndication.ResumingFromStandby);
+                //case SPWF04SxIndication.ResumingFromStandby: return nameof(SPWF04SxIndication.ResumingFromStandby);
 
-                case SPWF04SxIndication.GoingIntoDeepSleep: return nameof(SPWF04SxIndication.GoingIntoDeepSleep);
+                //case SPWF04SxIndication.GoingIntoDeepSleep: return nameof(SPWF04SxIndication.GoingIntoDeepSleep);
 
-                case SPWF04SxIndication.ResumingFromDeepSleep: return nameof(SPWF04SxIndication.ResumingFromDeepSleep);
+                //case SPWF04SxIndication.ResumingFromDeepSleep: return nameof(SPWF04SxIndication.ResumingFromDeepSleep);
 
                 case SPWF04SxIndication.StationDisassociated: return nameof(SPWF04SxIndication.StationDisassociated);
 
-                case SPWF04SxIndication.SystemConfigurationUpdated: return nameof(SPWF04SxIndication.SystemConfigurationUpdated);
+                //case SPWF04SxIndication.SystemConfigurationUpdated: return nameof(SPWF04SxIndication.SystemConfigurationUpdated);
 
                 case SPWF04SxIndication.RejectedFoundNetwork: return nameof(SPWF04SxIndication.RejectedFoundNetwork);
 
@@ -582,29 +585,29 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
                 case SPWF04SxIndication.WiFiAssociationTimedOut: return nameof(SPWF04SxIndication.WiFiAssociationTimedOut);
 
-                case SPWF04SxIndication.MicFailure: return nameof(SPWF04SxIndication.MicFailure);
+                //case SPWF04SxIndication.MicFailure: return nameof(SPWF04SxIndication.MicFailure);
 
-                case SPWF04SxIndication.UdpBroadcast: return nameof(SPWF04SxIndication.UdpBroadcast);
+                //case SPWF04SxIndication.UdpBroadcast: return nameof(SPWF04SxIndication.UdpBroadcast);
 
-                case SPWF04SxIndication.WpsGeneratedDhKeyset: return nameof(SPWF04SxIndication.WpsGeneratedDhKeyset);
+                //case SPWF04SxIndication.WpsGeneratedDhKeyset: return nameof(SPWF04SxIndication.WpsGeneratedDhKeyset);
 
-                case SPWF04SxIndication.WpsEnrollmentAttemptTimedOut: return nameof(SPWF04SxIndication.WpsEnrollmentAttemptTimedOut);
+                //case SPWF04SxIndication.WpsEnrollmentAttemptTimedOut: return nameof(SPWF04SxIndication.WpsEnrollmentAttemptTimedOut);
 
                 case SPWF04SxIndication.SockdDroppingClient: return nameof(SPWF04SxIndication.SockdDroppingClient);
 
                 case SPWF04SxIndication.NtpServerDelivery: return nameof(SPWF04SxIndication.NtpServerDelivery);
 
-                case SPWF04SxIndication.DhcpFailedToGetLease: return nameof(SPWF04SxIndication.DhcpFailedToGetLease);
+                //case SPWF04SxIndication.DhcpFailedToGetLease: return nameof(SPWF04SxIndication.DhcpFailedToGetLease);
 
-                case SPWF04SxIndication.MqttPublished: return nameof(SPWF04SxIndication.MqttPublished);
+                //case SPWF04SxIndication.MqttPublished: return nameof(SPWF04SxIndication.MqttPublished);
 
-                case SPWF04SxIndication.MqttClosed: return nameof(SPWF04SxIndication.MqttClosed);
+                //case SPWF04SxIndication.MqttClosed: return nameof(SPWF04SxIndication.MqttClosed);
 
                 case SPWF04SxIndication.WebSocketData: return nameof(SPWF04SxIndication.WebSocketData);
 
                 case SPWF04SxIndication.WebSocketClosed: return nameof(SPWF04SxIndication.WebSocketClosed);
 
-                case SPWF04SxIndication.FileReceived: return nameof(SPWF04SxIndication.FileReceived);
+                //case SPWF04SxIndication.FileReceived: return nameof(SPWF04SxIndication.FileReceived);
 
                 default: return "Other";
             }

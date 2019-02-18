@@ -19,7 +19,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Diagnostics;
 using RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx;
 using AzureDataSender_FEZ;
-using PervasiveDigital.Json;
+//using PervasiveDigital.Json;
 
 
 namespace RoSchmi.Net.Azure.Storage
@@ -290,6 +290,7 @@ namespace RoSchmi.Net.Azure.Storage
             catch (Exception ex)
             {
                 _Print_Debug("Exception was cought: " + ex.Message);
+                //Debug.WriteLine("Exception was cought: " + ex.Message);
                 response.StatusCode = HttpStatusCode.Forbidden;
                 return response.StatusCode;
             }
@@ -366,15 +367,7 @@ namespace RoSchmi.Net.Azure.Storage
                 { "Content-MD5", ContentMD5 }
             };
 
-            /*
-            var tableTypeHeaders = new Hashtable();
-            tableTypeHeaders.Add("Accept-Charset", "UTF-8");
-            tableTypeHeaders.Add("MaxDataServiceVersion", "3.0;NetFx");
-            tableTypeHeaders.Add("Content-Type", contentType);
-            tableTypeHeaders.Add("DataServiceVersion", "3.0");
-            tableTypeHeaders.Add("Prefer", getResponseTypeString(pResponseType));
-            tableTypeHeaders.Add("Content-MD5", ContentMD5);
-            */
+           
             if (_fiddlerIsAttached)
             { AzureStorageHelper.AttachFiddler(_fiddlerIsAttached, _fiddlerIP, _fiddlerPort); }
 
@@ -391,6 +384,7 @@ namespace RoSchmi.Net.Azure.Storage
             catch (Exception ex)
             {
                 _Print_Debug("Exception was cought: " + ex.Message);
+                //Debug.WriteLine("Exception was cought: " + ex.Message);
                 response.StatusCode = HttpStatusCode.Forbidden;
                 return response.StatusCode;
             }
@@ -489,7 +483,8 @@ namespace RoSchmi.Net.Azure.Storage
                 long freeMemory = GHIElectronics.TinyCLR.Native.Memory.FreeBytes;
                 Debug.WriteLine("TableClient: QueryTableEntities. Total Memory: " + totalMemory.ToString("N0") + "Free Bytes: " + freeMemory.ToString("N0"));
 
-                ArrayList entities = new ArrayList();
+                //ArrayList entities = new ArrayList();
+                ArrayList entities = null;
                 if ((response.Body != null) && (response.Body.StartsWith("<?xml")))
                 {
                     entities = ParseResponse(response.Body);                  
@@ -520,6 +515,7 @@ namespace RoSchmi.Net.Azure.Storage
             catch (Exception ex)
             {
                 _Print_Debug("Exception was cought: " + ex.Message);
+                //Debug.WriteLine("Exception was cought: " + ex.Message);
                 response.StatusCode = HttpStatusCode.NotFound;
                
                 return response.StatusCode;
@@ -669,30 +665,41 @@ namespace RoSchmi.Net.Azure.Storage
         #endregion
 
         #region Shared Access Signature
+        /*
         private string MD5ComputeHash(byte[] data)
         {
-            string StringData = Encoding.UTF8.GetString(data);
-            //System.Security.Cryptography
-            byte[] hash;
+            
+            if (data.Length != 0)
+            {               
+                wifi.CreateRamFile("fileToHash", data);
+                return Encoding.UTF8.GetString(wifi.ComputeHash("3", "fileToHash")).Substring(4);
+            }
+            else
+            {
+                return "D41D8CD98F00B204E9800998ECF8427E";
+            }
 
-            hash = xBrainLab.Security.Cryptography.MD5.GetHash(StringData);
-
-            string hashString = xBrainLab.Security.Cryptography.MD5.GetHashString(StringData);
+            
+            //byte[] hash= xBrainLab.Security.Cryptography.MD5.GetHash(StringData);
+            //string hashString = xBrainLab.Security.Cryptography.MD5.GetHashString(StringData);
+            
 
             //using (HashAlgorithm csp = new HashAlgorithm(PervasiveDigital.Security.ManagedProviders.HashAlgorithmType.MD5))
             //using (HashAlgorithm csp = new HashAlgorithm(xBrainLab.Security.Cryptography.MD5)
 
             //using (HashAlgorithm csp = HashAlgorithm.Create("Md5"))
-            /*
-            using (HashAlgorithm csp = HashAlgorithm.Create("MD5"))
-            {
+            
+            //using (HashAlgorithm csp = HashAlgorithm.Create("MD5"))
+            //{
 
-                hash = csp.ComputeHash(data);
-            }
-            */
+               // hash = csp.ComputeHash(data);
+            //}
+            
             //string hashString = ByteExtensions.ToHexString(hash, "");
-            return hashString;
+
+            //return hashString;
         }
+        */
         #endregion
 
         #region CreateTableAuthorizationHeader
@@ -714,25 +721,31 @@ namespace RoSchmi.Net.Azure.Storage
 
             if (!useSharedKeyLite)
             {
-                string StringData = Encoding.UTF8.GetString(content);    // alt
+               // string StringData = Encoding.UTF8.GetString(content);    // alt
 
-                //if (StringData != "")
-                //{
-                /*
-                Program.wifi.DeleteRamFile("fileToHash");
-                Program.wifi.CreateRamFile("fileToHash", content);
-                pMD5Hash = Encoding.UTF8.GetString(Program.wifi.ComputeHash("3", "fileToHash")).Substring(4);
-                pHash = Convert.FromBase64String(pMD5Hash);
+            /*
+             if (content.Length != 0)                  
+                    {
+
+                    wifi.CreateRamFile("fileToHash", content);
+                    content = null;
+                    pMD5Hash = Encoding.UTF8.GetString(wifi.ComputeHash("3", "fileToHash")).Substring(4);
+                    pHash = Convert.FromBase64String(pMD5Hash);                   
+                }
+                else
+                {
+                    // MD5 Hash of "" is constant, calculation throws an exception
+                    pHash = new byte[] { 212, 29, 140, 217, 143, 0, 178, 4, 233, 128, 9, 152, 236, 248, 66, 126 };
+                    pMD5Hash = "D41D8CD98F00B204E9800998ECF8427E";
+
+                   
+                                                                                                // }
+                    var dummy56 = 1;
+                }
                 */
 
-                // }
-                //  else
-                // { 
-                pHash = xBrainLab.Security.Cryptography.MD5.GetHash(StringData);            //alt
-                pMD5Hash = xBrainLab.Security.Cryptography.MD5.GetHashString(StringData);   //alt
-                                                                                            // }
-                var dummy56 = 1;
-
+                pHash = xBrainLab.Security.Cryptography.MD5.GetHash(Encoding.UTF8.GetString(content));            //alt
+                pMD5Hash = xBrainLab.Security.Cryptography.MD5.GetHashString(Encoding.UTF8.GetString(content));   //alt
 
                 //   pMD5Hash = MD5ComputeHash(content);    // uralt
 

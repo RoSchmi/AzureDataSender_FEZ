@@ -1,15 +1,11 @@
 ﻿using System;
 using System.Collections;
-using System.Text;
-using System.Threading;
 using RoSchmi.Net.Azure.Storage;
 
 namespace AzureDataSender_FEZ
 {
     public static class AnalogTablePropertiesAL
     {
-
-
         public static ArrayList AnalogPropertiesAL(string pSampleTime, double pT_1, double pT_2, double pT_3, double pT_4)
         {
             TableEntityProperty property;
