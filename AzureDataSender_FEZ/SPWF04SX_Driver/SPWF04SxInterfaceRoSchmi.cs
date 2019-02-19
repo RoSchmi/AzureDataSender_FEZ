@@ -706,12 +706,12 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             if (!SocketErrorHappened)
             {
                 a = cmd.ReadString();
-                Debug.WriteLine("1: Read a: " + a);
+                // Debug.WriteLine("1: Read a: " + a);
                 Thread.Sleep(0);               
                 if (!SocketErrorHappened)
                 {
                     b = cmd.ReadString();
-                    Debug.WriteLine("1: Read b: " + b);
+                    // Debug.WriteLine("1: Read b: " + b);
                 }
                 Thread.Sleep(0);
                 if (connectionSecurity == SPWF04SxConnectionSecurityType.Tls && b.IndexOf("Loading:") == 0)
@@ -719,18 +719,18 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                     if (!SocketErrorHappened)
                     {
                         a = cmd.ReadString();
-                        Debug.WriteLine("2: Read a: " + a);
+                        // Debug.WriteLine("2: Read a: " + a);
                     }
                     Thread.Sleep(0);
                     if (!SocketErrorHappened)
                     {
                         b = cmd.ReadString();
-                        Debug.WriteLine("2: Read b: " + b);
+                        // Debug.WriteLine("2: Read b: " + b);
                     }
                 }
                 else
                 {
-                    Debug.WriteLine("First read was not 'Loading:'");
+                    // Debug.WriteLine("First read was not 'Loading:'");
                 }
             }
             this.FinishCommand(cmd);

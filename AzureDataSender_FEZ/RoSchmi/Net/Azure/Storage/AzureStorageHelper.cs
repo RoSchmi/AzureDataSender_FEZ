@@ -59,6 +59,9 @@ namespace RoSchmi.Net.Azure.Storage
         public static bool WiFiNetworkLost
         { get; set; }
 
+        public static bool NTPServerDelivered
+        { get; set; }
+
 
 
         #region "Debugging"
@@ -188,12 +191,12 @@ namespace RoSchmi.Net.Azure.Storage
                 {                   
                     if (wifi != null)
                     {
-                        #region wifi != null  --> use SPWF04SA
+                        #region Region wifi != null  --> use SPWF04SA
                         bool isSocketRequest = true;
 
                         SPWF04SxRequest = PrepareSPWF04SxRequest(url, authHeader, dateHeader, versionHeader, payload, contentLength, httpVerb, isSocketRequest, expect100Continue, acceptType, additionalHeaders);
 
-                        // Print the Request
+                        // Print the Request (leave outcommented to save Ram)
                         //Debug.WriteLine(SPWF04SxRequest);
 
                         byte[] requestBinary = Encoding.UTF8.GetBytes(SPWF04SxRequest);
@@ -210,8 +213,7 @@ namespace RoSchmi.Net.Azure.Storage
                             protocol = "http";
                         }
                         else   // httpVerb = POST
-                        {
-                            //wifi.SetTlsServerRootCertificate(Resources.GetBytes(Resources.BinaryResources.BaltimoreCyberTrustRoot));
+                        {                           
                             wifi.SetTlsServerRootCertificate(caCerts[0].GetRawCertData());
                             wifi.ForceSocketsTls = true;
                             protocol = "https";
@@ -220,12 +222,7 @@ namespace RoSchmi.Net.Azure.Storage
                         int port = protocol == "https" ? 443 : 80;
                         SPWF04SxConnectionSecurityType securityType = protocol == "https" ? SPWF04SxConnectionSecurityType.Tls : SPWF04SxConnectionSecurityType.None;
 
-                        /*
-                        long totalMemory = GC.GetTotalMemory(true);
-                        long freeMemory = GHIElectronics.TinyCLR.Native.Memory.FreeBytes;
-                        Debug.WriteLine("Total memory: " + totalMemory.ToString("N0") + " Free Memory: " + freeMemory.ToString("N0"));
-                        */
-
+                        
                         #region HttpGET Request outcommented
                         /*
                         if (httpVerb == "GET")
@@ -345,19 +342,19 @@ namespace RoSchmi.Net.Azure.Storage
 
                         #region Wait 2 seconds for recovery when Network lost and functioning WifiAssociation
                         int timeCtr = 0;
-                        //while (((WiFiAssociationState == false) || WiFiNetworkLost) && (timeCtr < 20 ))   // Wait 2 sec for WifiAssociation, if not there, return
-                        while (WiFiNetworkLost && (timeCtr < 20))   // Wait 2 sec for WifiAssociation, if not there, return
+                        //while (((WiFiAssociationState == false) || WiFiNetworkLost) && (timeCtr < 20 ))   // Wait 2 sec for WifiAssociation, if not there --> return
+                        while (WiFiNetworkLost && (timeCtr < 20))   // Wait 2 sec for WifiNetWorkLost, if not there --> return
                         {
-                            if (timeCtr < 0)
+                            if (timeCtr > 0)
                             {
-                                Debug.WriteLine("Didn't try to open socket (Disassociation or WifiNetworkLost)");
+                                Debug.WriteLine("Didn't try to open socket (WifiNetworkLost)");
                             }
                             Thread.Sleep(100);
                             timeCtr++;
                         }
                         if (WiFiNetworkLost)
                         {
-                            Debug.WriteLine("Gave up finally to open socket (Disassociation)");
+                            Debug.WriteLine("Gave up finally to open socket (Network lost)");
                             return new BasicHttpResponse() { ETag = null, Body = "", StatusCode = HttpStatusCode.NotFound };
                         }
                         #endregion
@@ -370,17 +367,15 @@ namespace RoSchmi.Net.Azure.Storage
                         do
                         {
                             totalMemory = GC.GetTotalMemory(true);
-                            /*
-                            freeMemory = GHIElectronics.TinyCLR.Native.Memory.FreeBytes;
-                            Debug.WriteLine("Starting Send Webrequest. Total Memory: " + totalMemory.ToString() + "Free Bytes: " + freeMemory); 
-                            */
+                            
 
-                            #region try 1 second repeatedly to open socket (10 times)
+                            #region try 1.5 second repeatedly to open socket (10 times)
                             id = -1;
                             int socketTimeCtr = 0;
                             while ((id == -1) && (socketTimeCtr < 15))
                             {
                                 Debug.WriteLine("Going to open socket");
+                                NTPServerDelivered = false;
                                 totalMemory = GC.GetTotalMemory(true);
 
                                 id = wifi.OpenSocket(url.Host, port, SPWF04SxConnectionType.Tcp, securityType);
@@ -396,7 +391,7 @@ namespace RoSchmi.Net.Azure.Storage
                             if (id == -1)
                             {
                                 Debug.WriteLine("Finally failed to open socket");
-                                return new BasicHttpResponse() { ETag = null, Body = "", StatusCode = HttpStatusCode.NotFound };
+                                return new BasicHttpResponse() { ETag = null, Body = "", StatusCode = HttpStatusCode.Ambiguous };
                             }
                             #endregion
 
@@ -404,7 +399,14 @@ namespace RoSchmi.Net.Azure.Storage
 
                             totalMemory = GC.GetTotalMemory(true);
 
+                            if (NTPServerDelivered)                               
+                            {
+                                Debug.WriteLine("Posible NTP-Server Delivery interference");  // we return with 
+                                return new BasicHttpResponse() { ETag = null, Body = "", StatusCode = HttpStatusCode.Ambiguous };
+                            }
+
                             SocketDataPending = false;
+                            
                             wifi.WriteSocket(id, requestBinary);
                             if (httpVerb == "POST")
                             {
@@ -599,9 +601,8 @@ namespace RoSchmi.Net.Azure.Storage
                     }
                     #endregion
                     else
-                    {
-                        
-                        #region wifi = null  --> alternativly use SPWF04SA via NET/TinyCLR (doesn't work)
+                    {                     
+                        #region Region wifi = null  --> alternativly use SPWF04SA via NET/TinyCLR (doesn't work)
                         /*
                         request = PrepareRequest(url, authHeader, dateHeader, versionHeader, payload, contentLength, httpVerb, expect100Continue, acceptType, additionalHeaders);
                         if (request != null)
@@ -741,11 +742,15 @@ namespace RoSchmi.Net.Azure.Storage
                 {
                     throw new OutOfMemoryException(ex21.ToString());
                 }
-                catch (Exception ex22)
+                catch (NullReferenceException ex22)
+                {
+                    throw new NullReferenceException("NullExcept 22 at: " + ex22.ToString());
+                }
+                catch (Exception ex23)
                 {
                     lock (theLock1)
                     {
-                        _Print_Debug("Exception in HttpWebRequest.GetResponse(): " + ex22.Message);
+                        _Print_Debug("Exception in HttpWebRequest.GetResponse(): " + ex23.Message);
                         _Print_Debug("ETag: " + _responseHeader_ETag + " Body: " + responseBody + " StatusCode: " + responseStatusCode);
                     }
                     return new BasicHttpResponse() { ETag = _responseHeader_ETag, Body = responseBody, StatusCode = responseStatusCode };
@@ -766,11 +771,15 @@ namespace RoSchmi.Net.Azure.Storage
             {
                 throw new OutOfMemoryException(ex11.ToString());
             }
-            catch (Exception ex12)
+            catch (NullReferenceException ex12)
+            {
+                throw new NullReferenceException("NullExcept 12 at: " +  ex12.ToString());
+            }
+            catch (Exception ex13)
             {
                 lock (theLock1)
                 {
-                    _Print_Debug("Exception in HttpWebRequest: " + ex12.Message);
+                    _Print_Debug("Exception in HttpWebRequest: " + ex13.Message);
                 }
                 return new BasicHttpResponse() { ETag = null, Body = responseBody, StatusCode = responseStatusCode };                       
             }             

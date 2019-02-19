@@ -31,7 +31,7 @@ namespace RoSchmi.Net.Azure.Storage
         //private string VersionHeader = "2015-02-21";
         private string VersionHeader = "2015-04-05";
 
-        internal DateTime InstanceDate { get; set; }
+      //  internal DateTime InstanceDate { get; set; }
 
         private bool _fiddlerIsAttached = false;
         private IPAddress _fiddlerIP = null;
@@ -152,7 +152,7 @@ namespace RoSchmi.Net.Azure.Storage
         {
             wifi = pSPWF04Sx;
             _account = account;
-            InstanceDate = DateTime.UtcNow;
+            //InstanceDate = DateTime.UtcNow;
             caCerts = pCertificat;
             _debug = pDebugMode;
             _debug_level = pDebugLevel;
@@ -219,6 +219,7 @@ namespace RoSchmi.Net.Azure.Storage
             string contentType = getContentTypeString(pContentType);
             string acceptType = getAcceptTypeString(pAcceptType);
 
+            long totalMemory = GC.GetTotalMemory(true);
 
             /*
             content = "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>" +
@@ -242,7 +243,7 @@ namespace RoSchmi.Net.Azure.Storage
                + tableName +
            "')</id>" +
            "<title />" +
-           "<updated>" + InstanceDate.ToString("yyyy-MM-ddTHH:mm:ss.0000000Z") + "</updated>" +
+           "<updated>" + DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.0000000Z") + "</updated>" +
            "<author><name/></author> " +
            "<content type=\"application/xml\"><m:properties><d:TableName>" + tableName + "</d:TableName></m:properties></content></entry>";
 
@@ -300,11 +301,7 @@ namespace RoSchmi.Net.Azure.Storage
         #region InsertTabelEntity
         public HttpStatusCode InsertTableEntity(string tableName, TableEntity pEntity, ContType pContentType = ContType.applicationIatomIxml, AcceptType pAcceptType = AcceptType.applicationIjson, ResponseType pResponseType = ResponseType.returnContent, bool useSharedKeyLite = false)
         {
-            /*
-            long totalMemory = GC.GetTotalMemory(true);
-            long freeMemory = GHIElectronics.TinyCLR.Native.Memory.FreeBytes;
-            Debug.WriteLine("TableClient: Start of InsertTableEntity " + totalMemory.ToString("N0") + " Free Memory: " + freeMemory.ToString("N0"));
-            */
+            
 
             OperationResultsClear(); ;
             string timestamp = GetDateHeader();
@@ -312,6 +309,8 @@ namespace RoSchmi.Net.Azure.Storage
 
             string contentType = getContentTypeString(pContentType);
             string acceptType = getAcceptTypeString(pAcceptType);
+
+            long totalMemory = GC.GetTotalMemory(true);
 
             switch (contentType)
             {
@@ -343,6 +342,7 @@ namespace RoSchmi.Net.Azure.Storage
             string HttpVerb = "POST";
             int contentLength = 0;
             byte[] payload = GetBodyBytesAndLength(content, out contentLength);
+            content = null;     // free memory
             string ContentMD5 = string.Empty;
             byte[] hashContentMD5 = null;
 
@@ -382,6 +382,10 @@ namespace RoSchmi.Net.Azure.Storage
                 _OperationResponseETag = response.ETag;
                 _OperationResponseMD5 = response.Content_MD5;
                 return response.StatusCode;
+            }
+            catch (OutOfMemoryException ex1)
+            {
+                throw new OutOfMemoryException("Exc at 01: " + ex1.Message);
             }
             catch (Exception ex)
             {
@@ -437,6 +441,7 @@ namespace RoSchmi.Net.Azure.Storage
 
             int contentLength = 0;
             byte[] payload = GetBodyBytesAndLength(content, out contentLength);
+            content = null;    // clear memory
 
             string resourceString = string.Empty;
             string queryString = string.Empty;
