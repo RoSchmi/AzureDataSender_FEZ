@@ -1035,6 +1035,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                                     break;
                                 case 0x4C:   // dec 79: Write failed
                                     {
+                                        SocketErrorHappened = true;
                                         Debug.WriteLine("Ind: " + ind.ToString("X2") + " Write failed " + " Pld = " + payloadLength.ToString());                                       
                                     }
                                     break;

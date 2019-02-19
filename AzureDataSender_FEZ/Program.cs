@@ -72,7 +72,7 @@ namespace AzureDataSender_FEZ
       
         private static int AnalogCloudTableYear = 1900;
 
-        private static int OnOffTable01Year = 1900;
+        
 
         // Create Datacontainer for values of 4 analog channels, Data invalidate time = 15 min
         private static DataContainer dataContainer = new DataContainer(new TimeSpan(0, 15, 0));
@@ -94,7 +94,7 @@ namespace AzureDataSender_FEZ
         static int readInterval = 4;            // in this interval analog sensors are read
 
         //static int writeToCloudInterval = 600;   // in this interval the analog data are stored to the cloud
-        static int writeToCloudInterval = 30;   // in this interval the analog data are stored to the cloud
+        static int writeToCloudInterval = 45;   // in this interval the analog data are stored to the cloud
 
         static int OnOffToggleInterval = 420;    // in this interval the On/Off state is toggled (test values)
 
@@ -114,7 +114,7 @@ namespace AzureDataSender_FEZ
         private static readonly object LockProgram = new object();
 
         //private static GpioPin led1;
-        private static GpioPin btn1;
+        private static GpioPin OnOffSensor01;
         
 
         //private static SPWF04SxInterface wifi;
@@ -162,25 +162,14 @@ namespace AzureDataSender_FEZ
         private static AdcController adc = AdcController.GetDefault();
         private static AdcChannel analog0 = adc.OpenChannel(FEZ.AdcChannel.A0);
         private static AdcChannel analog1 = adc.OpenChannel(FEZ.AdcChannel.A1);
+        private static AdcChannel analog2 = adc.OpenChannel(FEZ.AdcChannel.A2);
+        private static AdcChannel analog3 = adc.OpenChannel(FEZ.AdcChannel.A3);
 
-        //private static AdcChannel analog2 = adc.OpenChannel(FEZ.AdcChannel.A2);
-        //private static AdcChannel analog3 = adc.OpenChannel(FEZ.AdcChannel.A3);
-
-
-
-        // Set parameter for 4 tables for On/Off-values (name must conform to special rules: see Azure)
-        // the 5th parameter defines the name of table, the 6th an optional label, some parameters are not used
-
-        // static OnOffDigitalSensorMgr OnOffSensor_01 = new OnOffDigitalSensorMgr(timeZoneOffset, dstOffset, dstStart, dstEnd, "Burnerxy", "OnOffSensor01", true, false);
-
-
-        //static OnOffDigitalSensorMgr OnOffSensor_02 = new OnOffDigitalSensorMgr(timeZoneOffset, dstOffset, dstStart, dstEnd, "Boilerxy", "OnOffSensor02", true, false, "undef", "undef", "undef");
-        //static OnOffDigitalSensorMgr OnOffSensor_03 = new OnOffDigitalSensorMgr(timeZoneOffset, dstOffset, dstStart, dstEnd, "Pumpxy", "OnOffSensor03", true, false, "undef", "undef", "undef");
-        //static OnOffDigitalSensorMgr OnOffSensor_04 = new OnOffDigitalSensorMgr(timeZoneOffset, dstOffset, dstStart, dstEnd, "Heaterxy", "OnOffSensor04", true, false, "undef", "undef", "undef");
-
-        static DateTime btn1LastSendTime = DateTime.Now;
-        static TimeSpan btn1OnTimeDay = new TimeSpan(0, 0, 0);
-        static string btn1TableName = "Burnerxy";
+        // For OnOffSensor01
+        static string OnOffSensor01TableName = "Burnerxy";                //(name must be conform to special rules: see Azure)
+        static DateTime OnOffSensor01LastSendTime = DateTime.MinValue;
+        static TimeSpan OnOffSensor01OnTimeDay = new TimeSpan(0, 0, 0);
+        private static int OnOffTable01Year = 1900;
 
         #endregion
 
@@ -193,9 +182,9 @@ namespace AzureDataSender_FEZ
             Debug.WriteLine("DateTime at Start: " + DateTime.Now.ToString());
         
             var cont = GpioController.GetDefault();
-            btn1 = cont.OpenPin(FEZ.GpioPin.Btn1);
-            btn1.SetDriveMode(GpioPinDriveMode.InputPullUp);
-            btn1.  ValueChanged += Btn1_ValueChanged;
+            OnOffSensor01 = cont.OpenPin(FEZ.GpioPin.Btn1);
+            OnOffSensor01.SetDriveMode(GpioPinDriveMode.InputPullUp);
+            OnOffSensor01.ValueChanged += OnOffSensor01_ValueChanged;
 
           
 
@@ -320,7 +309,7 @@ namespace AzureDataSender_FEZ
             Debug.WriteLine("Remaining Ram at end of main: " + GHIElectronics.TinyCLR.Native.Memory.FreeBytes + " used Bytes: " + GHIElectronics.TinyCLR.Native.Memory.UsedBytes);
 
 
-            getSensorDataTimer = new System.Threading.Timer(new TimerCallback(getSensorDataTimer_tick), null, readInterval * 1000, 5 * 60 * 1000);
+            getSensorDataTimer = new System.Threading.Timer(new TimerCallback(getSensorDataTimer_tick), null, readInterval * 1000, 20 * 60 * 1000);
             // start timer to write analog data to the Cloud
             writeAnalogToCloudTimer = new System.Threading.Timer(new TimerCallback(writeAnalogToCloudTimer_tick), null, writeToCloudInterval * 1000, Timeout.Infinite);
             readLastAnalogRowTimer = new System.Threading.Timer(new TimerCallback(readLastAnalogRowTimer_tick), null, Timeout.Infinite, Timeout.Infinite);
@@ -330,6 +319,8 @@ namespace AzureDataSender_FEZ
                 Thread.Sleep(100);
             }              
         }
+
+        
 
         #endregion
 
@@ -346,21 +337,24 @@ namespace AzureDataSender_FEZ
                        + (23 - actDate.Hour).ToString("D2") + (59 - actDate.Minute).ToString("D2") + (59 - actDate.Second).ToString("D2");           
         }
 
-        #region Region OnOffSensor_01_digitalOnOffSensorSend
-        private static void OnOffSensor_01_digitalOnOffSensorSend(OnOffDigitalSensorMgr sender, OnOffDigitalSensorMgr.OnOffSensorEventArgs e)
+        
+
+        #region Event OnOffSensor01_ValueChanged  -- Entity with OnOffSensorData is written to the Cloud
+
+        private static void OnOffSensor01_ValueChanged(GpioPin sender, GpioPinValueChangedEventArgs e)
         {
             X509Certificate[] caCerts = new X509Certificate[] { new X509Certificate(Resources.GetBytes(Resources.BinaryResources.BaltimoreCyberTrustRoot)) };
 
             int yearOfSend = DateTime.Now.Year;
 
-            #region Region Create analogTable if not exists
+            // Create OnOffTable if not exists
             HttpStatusCode resultTableCreate = HttpStatusCode.Ambiguous;
             if (OnOffTable01Year != yearOfSend)
-            {
-              //  resultTableCreate = createTable(myCloudStorageAccount, caCerts, OnOffSensor_01.DestinationTable + DateTime.Today.Year.ToString());
+            {               
+                resultTableCreate = createTable(myCloudStorageAccount, caCerts, OnOffSensor01TableName + DateTime.Today.Year.ToString());
                 var dummy345 = 1;
             }
-            #endregion
+           
 
             if ((resultTableCreate == HttpStatusCode.Created) || (resultTableCreate == HttpStatusCode.NoContent) || (resultTableCreate == HttpStatusCode.Conflict))
             {
@@ -368,8 +362,6 @@ namespace AzureDataSender_FEZ
             }
             else
             {
-
-
                 string partitionKey = makePartitionKey(onOffTablePartPrefix, augmentPartitionKey);
 
                 DateTime actDate = DateTime.Now;
@@ -377,85 +369,23 @@ namespace AzureDataSender_FEZ
 
                 string sampleTime = actDate.Month.ToString("D2") + "/" + actDate.Day.ToString("D2") + "/" + actDate.Year + " " + actDate.Hour.ToString("D2") + ":" + actDate.Minute.ToString("D2") + ":" + actDate.Second.ToString("D2");
 
-                TimeSpan tflSend = e.TimeFromLastSend;
+                TimeSpan tflSend = OnOffSensor01LastSendTime == DateTime.MinValue ? new TimeSpan(0) : e.Timestamp.Date - OnOffSensor01LastSendTime;
+
+                OnOffSensor01LastSendTime = e.Timestamp.Date;
 
                 string timeFromLastSendAsString = tflSend.Days.ToString("D3") + "-" + tflSend.Hours.ToString("D2") + ":" + tflSend.Minutes.ToString("D2") + ":" + tflSend.Seconds.ToString("D2");
 
-                string onTimeDayAsString = e.OnTimeDay.Days.ToString("D3") + "-" + e.OnTimeDay.Hours.ToString("D2") + ":" + e.OnTimeDay.Minutes.ToString("D2") + ":" + e.OnTimeDay.Seconds.ToString("D2");
-
-                ArrayList propertiesAL = OnOffTablePropertiesAL.OnOffPropertiesAL(e.ActState == true ? "On" : "Off", e.OldState == true ? "On" : "Off", onTimeDayAsString, sampleTime, timeFromLastSendAsString);
-
-                OnOffTableEntity onOffTableEntity = new OnOffTableEntity(partitionKey, rowKey, propertiesAL);
-
-                HttpStatusCode insertResult = HttpStatusCode.BadRequest;
-
-                string insertEtag = string.Empty;
-                insertResult = insertTableEntity(myCloudStorageAccount, caCerts, e.DestinationTable + yearOfSend.ToString(), onOffTableEntity, out insertEtag);
-
-                if ((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict))
-                {
-                    Debug.WriteLine(((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)) ? "Succeded to insert Entity\r\n" : "Failed to insert Entity\r\n");
-                }
-                else
-                {
-                    Debug.WriteLine(((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)) ? "Succeded to insert Entity\r\n" : "Failed to insert Entity ****************************************************\r\n");
-                }
-            }
-
-          //  DateTime timeZoneCorrectedDateTime = DateTime.Now.AddMinutes(timeZoneOffset);
-            // actDateTime is corrected for timeZoneOffset and DayLightSavingTime
-
-           // DateTime actDateTime = timeZoneCorrectedDateTime.AddMinutes(GetDlstOffset(timeZoneCorrectedDateTime));
-        }
-
-        #endregion
-
-        private static void Btn1_ValueChanged(GpioPin sender, GpioPinValueChangedEventArgs e)
-        {
-            // OnOffSensor_01.Input = GpioPinValue.High == btn1.Read() ? false : true;
-
-            X509Certificate[] caCerts = new X509Certificate[] { new X509Certificate(Resources.GetBytes(Resources.BinaryResources.BaltimoreCyberTrustRoot)) };
-
-            int yearOfSend = DateTime.Now.Year;
-
-            #region Region Create analogTable if not exists
-            HttpStatusCode resultTableCreate = HttpStatusCode.Ambiguous;
-            if (OnOffTable01Year != yearOfSend)
-            {
-                //resultTableCreate = createTable(myCloudStorageAccount, caCerts, OnOffSensor_01.DestinationTable + DateTime.Today.Year.ToString());
-                resultTableCreate = createTable(myCloudStorageAccount, caCerts, btn1TableName + DateTime.Today.Year.ToString());
-                var dummy345 = 1;
-            }
-            #endregion
-
-            if ((resultTableCreate == HttpStatusCode.Created) || (resultTableCreate == HttpStatusCode.NoContent) || (resultTableCreate == HttpStatusCode.Conflict))
-            {
-                OnOffTable01Year = yearOfSend;
-            }
-            else
-            {
-
-
-                string partitionKey = makePartitionKey(onOffTablePartPrefix, augmentPartitionKey);
-
-                DateTime actDate = DateTime.Now;
-                string rowKey = makeRowKey(actDate);
-
-                string sampleTime = actDate.Month.ToString("D2") + "/" + actDate.Day.ToString("D2") + "/" + actDate.Year + " " + actDate.Hour.ToString("D2") + ":" + actDate.Minute.ToString("D2") + ":" + actDate.Second.ToString("D2");
-
-                TimeSpan tflSend = DateTime.Now - btn1LastSendTime;
-
-                string timeFromLastSendAsString = tflSend.Days.ToString("D3") + "-" + tflSend.Hours.ToString("D2") + ":" + tflSend.Minutes.ToString("D2") + ":" + tflSend.Seconds.ToString("D2");
-
-
+                OnOffSensor01OnTimeDay = OnOffSensor01.Read() == GpioPinValue.High ? OnOffSensor01OnTimeDay + tflSend : OnOffSensor01OnTimeDay;
 
                 //string onTimeDayAsString = e.OnTimeDay.Days.ToString("D3") + "-" + e.OnTimeDay.Hours.ToString("D2") + ":" + e.OnTimeDay.Minutes.ToString("D2") + ":" + e.OnTimeDay.Seconds.ToString("D2");
 
-                string onTimeDayAsString = "000" + "-" + "00" + ":" + "00" + ":" + "00";
+                string onTimeDayAsString = OnOffSensor01OnTimeDay.Days.ToString("D3") + "-" + OnOffSensor01OnTimeDay.Hours.ToString("D2") + ":" + OnOffSensor01OnTimeDay.Minutes.ToString("D2") + ":" + OnOffSensor01OnTimeDay.Seconds.ToString("D2");
+
+              
 
 
                 //ArrayList propertiesAL = OnOffTablePropertiesAL.OnOffPropertiesAL(e.ActState == true ? "On" : "Off", e.OldState == true ? "On" : "Off", onTimeDayAsString, sampleTime, timeFromLastSendAsString);
-                ArrayList propertiesAL = OnOffTablePropertiesAL.OnOffPropertiesAL(btn1.Read() == GpioPinValue.Low ? "On" : "Off", btn1.Read() == GpioPinValue.Low ? "Off" : "On", onTimeDayAsString, sampleTime, timeFromLastSendAsString);
+                ArrayList propertiesAL = OnOffTablePropertiesAL.OnOffPropertiesAL(OnOffSensor01.Read() == GpioPinValue.Low ? "On" : "Off", OnOffSensor01.Read() == GpioPinValue.Low ? "Off" : "On", onTimeDayAsString, sampleTime, timeFromLastSendAsString);
 
 
                 OnOffTableEntity onOffTableEntity = new OnOffTableEntity(partitionKey, rowKey, propertiesAL);
@@ -463,7 +393,7 @@ namespace AzureDataSender_FEZ
                 HttpStatusCode insertResult = HttpStatusCode.BadRequest;
 
                 string insertEtag = string.Empty;
-                insertResult = insertTableEntity(myCloudStorageAccount, caCerts, btn1TableName + yearOfSend.ToString(), onOffTableEntity, out insertEtag);
+                insertResult = insertTableEntity(myCloudStorageAccount, caCerts, OnOffSensor01TableName + yearOfSend.ToString(), onOffTableEntity, out insertEtag);
 
                 if ((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict))
                 {
@@ -474,22 +404,16 @@ namespace AzureDataSender_FEZ
                     Debug.WriteLine(((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)) ? "Succeded to insert Entity\r\n" : "Failed to insert Entity ****************************************************\r\n");
                 }
             }
-
-
-
         }
 
 
+        #endregion
 
-        //     *************************************   Event writeAnalogToCloudTimer_tick     *******************************************************
-
-        // When this timer fires an Entity containing 4 analog values is stored to an Azure Cloud Table
 
         #region Timer Event writeAnalogToCloudTimer_tick  --- Entity with analog values is written to the Cloud
         private static void writeAnalogToCloudTimer_tick(object state)
         {
-            long totalMemory;
-            long freeMemory;
+            
             writeAnalogToCloudTimer.Change(10 * 60 * 1000, 10 * 60 * 1000);    // Set to a long interval, so will not fire again before completed
 
             //myCloudStorageAccount = new CloudStorageAccount(storageAccountName, storageKey, useHttps: Azure_useHTTPS);
@@ -550,9 +474,12 @@ namespace AzureDataSender_FEZ
                 AnalogTableEntity analogTableEntity = new AnalogTableEntity(partitionKey, rowKey, propertiesAL);
 
                 Debug.WriteLine("Going to upload. Sampletime:               " + sampleTime);
+                /*
                 totalMemory = GC.GetTotalMemory(true);
                 freeMemory = GHIElectronics.TinyCLR.Native.Memory.FreeBytes;
                 Debug.WriteLine("Before 'insertTableEntity' command. Total Memory: " + totalMemory.ToString("N0") + "Free Bytes: " + freeMemory.ToString("N0"));
+                */
+
                 string insertEtag = string.Empty;
                 HttpStatusCode insertResult = HttpStatusCode.BadRequest;
 
@@ -572,9 +499,11 @@ namespace AzureDataSender_FEZ
                 // trigger the timer to read the last row
                 readLastAnalogRowTimer.Change(1000, Timeout.Infinite);
             }
+            /*
             totalMemory = GC.GetTotalMemory(true);
             freeMemory = GHIElectronics.TinyCLR.Native.Memory.FreeBytes;
             Debug.WriteLine("At end of Timer event. Total memory: " + totalMemory.ToString("N0") + " Free Memory: " + freeMemory.ToString("N0"));
+            */
            
           
         }
@@ -614,8 +543,6 @@ namespace AzureDataSender_FEZ
             dataContainer.SetNewAnalogValue(3, actDateTime, ReadAnalogSensor(2));
             dataContainer.SetNewAnalogValue(4, actDateTime, ReadAnalogSensor(3));
 
-            //Debug.WriteLine("Got Sensor Data");
-
           //  getSensorDataTimer.Change(readInterval * 1000, readInterval * 1000);
         }
         #endregion
@@ -644,14 +571,12 @@ namespace AzureDataSender_FEZ
                     break;
                 case 2:
                     {
-                        //theRead = analog2.ReadRatio();
-                        theRead = 0;
+                        theRead = analog2.ReadRatio();                       
                     }
                     break;
                 case 3:
                     {
-                        //theRead = analog3.ReadRatio();
-                        theRead = 0;
+                        theRead = analog3.ReadRatio();             
                     }
                     break;                          
             }

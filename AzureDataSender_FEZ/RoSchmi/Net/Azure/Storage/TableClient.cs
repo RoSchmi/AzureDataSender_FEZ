@@ -300,9 +300,11 @@ namespace RoSchmi.Net.Azure.Storage
         #region InsertTabelEntity
         public HttpStatusCode InsertTableEntity(string tableName, TableEntity pEntity, ContType pContentType = ContType.applicationIatomIxml, AcceptType pAcceptType = AcceptType.applicationIjson, ResponseType pResponseType = ResponseType.returnContent, bool useSharedKeyLite = false)
         {
+            /*
             long totalMemory = GC.GetTotalMemory(true);
             long freeMemory = GHIElectronics.TinyCLR.Native.Memory.FreeBytes;
             Debug.WriteLine("TableClient: Start of InsertTableEntity " + totalMemory.ToString("N0") + " Free Memory: " + freeMemory.ToString("N0"));
+            */
 
             OperationResultsClear(); ;
             string timestamp = GetDateHeader();
@@ -478,12 +480,12 @@ namespace RoSchmi.Net.Azure.Storage
                 AzureStorageHelper.SetDebugLevel(_debug_level);
                 response = AzureStorageHelper.SendWebRequest(wifi, caCerts, uri, authorizationHeader, timestamp, VersionHeader, payload, contentLength, HttpVerb, false, acceptType, tableTypeHeaders);
 
-               
+                /*
                 long totalMemory = GC.GetTotalMemory(true);
                 long freeMemory = GHIElectronics.TinyCLR.Native.Memory.FreeBytes;
                 Debug.WriteLine("TableClient: QueryTableEntities. Total Memory: " + totalMemory.ToString("N0") + "Free Bytes: " + freeMemory.ToString("N0"));
-
-                //ArrayList entities = new ArrayList();
+                */
+                
                 ArrayList entities = null;
                 if ((response.Body != null) && (response.Body.StartsWith("<?xml")))
                 {
@@ -497,9 +499,11 @@ namespace RoSchmi.Net.Azure.Storage
                         //var newInstance = (QueryEntity)JsonConverter.DeserializeObject(response.Body, typeof(QueryEntity), CreateInstance);      
                 }
 
+                /*
                 totalMemory = GC.GetTotalMemory(true);
                 freeMemory = GHIElectronics.TinyCLR.Native.Memory.FreeBytes;
                 Debug.WriteLine("TableClient: before filling _OperationResponseBody. Total Memory: " + totalMemory.ToString("N0") + "Free Bytes: " + freeMemory.ToString("N0"));
+                */
 
                 _OperationResponseBody = response.Body.Substring(0, Math.Min(response.Body.Length, 300));   // not more than 300 char
 
@@ -512,10 +516,14 @@ namespace RoSchmi.Net.Azure.Storage
 
                 return response.StatusCode;
             }
+            catch (OutOfMemoryException e)
+            {
+                throw new OutOfMemoryException(e.Message);
+            }
             catch (Exception ex)
             {
-                _Print_Debug("Exception was cought: " + ex.Message);
-                //Debug.WriteLine("Exception was cought: " + ex.Message);
+                //_Print_Debug("Exception was cought: " + ex.Message);
+                Debug.WriteLine("Exception was cought: " + ex.Message);
                 response.StatusCode = HttpStatusCode.NotFound;
                
                 return response.StatusCode;
@@ -699,7 +707,7 @@ namespace RoSchmi.Net.Azure.Storage
 
             //return hashString;
         }
-        */
+        */    
         #endregion
 
         #region CreateTableAuthorizationHeader
@@ -708,48 +716,36 @@ namespace RoSchmi.Net.Azure.Storage
             string contentType = getContentTypeString(pContentType);
             pMD5Hash = string.Empty;
             pHash = null;
-            long totalMemory = GC.GetTotalMemory(true);
-            long freeMemory = GHIElectronics.TinyCLR.Native.Memory.FreeBytes;
-            Debug.WriteLine("Before calculatin Authorization Header: " + totalMemory.ToString("N0") + " Free Memory: " + freeMemory.ToString("N0"));
-
-            //string Md5String = Encoding.UTF8.GetString(Program.wifi.ComputeHash("3", "fileToHash")).Substring(4);
-
-            //byte[] MD5Hash = Convert.FromBase64String(Md5String);
-
-            // byte[] hashResult = Program.wifi.ComputeHash("3", "fileToHash");
-
-
+            
             if (!useSharedKeyLite)
-            {
-               // string StringData = Encoding.UTF8.GetString(content);    // alt
+            {               
+                // long startTime = DateTime.Now.Ticks;
+                
+                pHash = xBrainLab.Security.Cryptography.MD5.GetHash(content);
+                pMD5Hash = BitConverter.ToString(pHash);
+                pMD5Hash = pMD5Hash.Replace("-", string.Empty);
 
-            /*
-             if (content.Length != 0)                  
-                    {
+                // long endTime = DateTime.Now.Ticks;
+                // Debug.WriteLine("Needed for MD5-hash (1): " + ((endTime - startTime) / TimeSpan.TicksPerMillisecond).ToString());  // about 80 ms
 
-                    wifi.CreateRamFile("fileToHash", content);
-                    content = null;
-                    pMD5Hash = Encoding.UTF8.GetString(wifi.ComputeHash("3", "fileToHash")).Substring(4);
-                    pHash = Convert.FromBase64String(pMD5Hash);                   
+                #region Region: Alternatively use SPWF04SA to calculate the Hash (resulted in a memory leak, don't know why)
+                /*
+                 if (content.Length != 0)                  
+                        {
+
+                        wifi.CreateRamFile("fileToHash", content);
+                        content = null;
+                        pMD5Hash = Encoding.UTF8.GetString(wifi.ComputeHash("3", "fileToHash")).Substring(4);
+                        pHash = Convert.FromBase64String(pMD5Hash);                   
                 }
                 else
                 {
                     // MD5 Hash of "" is constant, calculation throws an exception
                     pHash = new byte[] { 212, 29, 140, 217, 143, 0, 178, 4, 233, 128, 9, 152, 236, 248, 66, 126 };
-                    pMD5Hash = "D41D8CD98F00B204E9800998ECF8427E";
-
-                   
-                                                                                                // }
-                    var dummy56 = 1;
+                    pMD5Hash = "D41D8CD98F00B204E9800998ECF8427E";                                                                                                           
                 }
                 */
-
-                pHash = xBrainLab.Security.Cryptography.MD5.GetHash(Encoding.UTF8.GetString(content));            //alt
-                pMD5Hash = xBrainLab.Security.Cryptography.MD5.GetHashString(Encoding.UTF8.GetString(content));   //alt
-
-                //   pMD5Hash = MD5ComputeHash(content);    // uralt
-
-
+                #endregion
             }
 
             string toSign = string.Empty;
@@ -764,21 +760,27 @@ namespace RoSchmi.Net.Azure.Storage
 
             string signature;
 
+            #region Region: Tests to use SPWF04SA for SHA256 encoding (not used)
             //toSign = @"POST\n56487EFE04B9981AB97DE7D20353F298\napplication/atom+xml\nTue, 29 Jan 2019 22:38:48 GMT\n/roschmi01/Tables()";
 
             /*
-            Program.wifi.CreateRamFile("fileSHA256", Convert.FromBase64String(_account.AccountKey));
+            wifi.CreateRamFile("fileSHA256", Convert.FromBase64String(_account.AccountKey));
             string strSHA256Hash = Encoding.UTF8.GetString(Program.wifi.ComputeHash("2", "fileSHA256")).Substring(7);
             byte[] theHmac = Convert.FromBase64String(strSHA256Hash);
             */
+            //var theHmac = wifi.ComputeHash("2", "fileSHA256");
+            #endregion
 
-            //var theHmac = Program.wifi.ComputeHash("2", "fileSHA256");
-
-
+            //long startTime = DateTime.Now.Ticks;
 
             var hmac = new PervasiveDigital.Security.ManagedProviders.HMACSHA256(Convert.FromBase64String(_account.AccountKey));
             var hmacBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(toSign));
-            signature = Convert.ToBase64String(hmacBytes).Replace("!", "+").Replace("*", "/"); ;
+            signature = Convert.ToBase64String(hmacBytes).Replace("!", "+").Replace("*", "/");
+
+            // long endTime = DateTime.Now.Ticks;
+            // Debug.WriteLine("Needed for MD5SHA256-hash: " + ((endTime - startTime) / TimeSpan.TicksPerMillisecond).ToString());  // about 160 ms
+
+
 
             if (useSharedKeyLite)
             {

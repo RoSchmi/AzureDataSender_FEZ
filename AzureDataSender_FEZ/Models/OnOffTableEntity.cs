@@ -32,10 +32,10 @@ namespace AzureDataSender_FEZ
                 ActStatus = ((string[])this.Properties[0])[2],
                 LastStatus = ((string[])this.Properties[1])[2],
                 OnTimeDay = ((string[])this.Properties[2])[2],
-                SampleTime = ((string[])this.Properties[3])[2],
+                //SampleTime = ((string[])this.Properties[3])[2],
 
                 TimeFromLast = ((string[])this.Properties[4])[2],
-                
+                SampleTime = ((string[])this.Properties[3])[2]
             };
             //  this.JsonString = JsonConverter.Serialize(myProperties).ToString();
         }

@@ -41,7 +41,6 @@
     <Compile Include="DataContainer.cs" />
     <Compile Include="Models\AnalogValueSet.cs" />
     <Compile Include="Models\OnOffTableEntity.cs" />
-    <Compile Include="OnOffDigitalSensorMgr.cs" />
     <Compile Include="OnOffTablePropertiesAL.cs" />
     <Compile Include="PervasiveDigital\Security\ManagedProviders\HMACSHA256.cs" />
     <Compile Include="PervasiveDigital\Security\ManagedProviders\IHashAlgorithm.cs" />
