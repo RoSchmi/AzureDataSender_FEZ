@@ -172,12 +172,7 @@ namespace AzureDataSender_FEZ
 
         #region Region Main
         static void Main()
-        {
-
-            long totalMemory = GC.GetTotalMemory(true);
-            Debug.WriteLine("Remaining Ram at start of Main: " + GHIElectronics.TinyCLR.Native.Memory.FreeBytes + " used Bytes: " + GHIElectronics.TinyCLR.Native.Memory.UsedBytes);
-            Debug.WriteLine("DateTime at Start: " + DateTime.Now.ToString());
-        
+        {                 
             var cont = GpioController.GetDefault();
 
             OnOffSensor01 = cont.OpenPin(FEZ.GpioPin.Btn1);
@@ -194,36 +189,16 @@ namespace AzureDataSender_FEZ
             var scont = SpiController.FromName(FEZ.SpiBus.WiFi);
             
             var spi = scont.GetDevice(SPWF04SxInterfaceRoSchmi.GetConnectionSettings(SpiChipSelectType.Gpio, FEZ.GpioPin.WiFiChipSelect));
-            
-            /*
-            totalMemory = GC.GetTotalMemory(true);
-            Debug.WriteLine("Total Memory: " + totalMemory.ToString());
-            Debug.WriteLine("Remaining Ram before creating wifi: " + GHIElectronics.TinyCLR.Native.Memory.FreeBytes + " used Bytes: " + GHIElectronics.TinyCLR.Native.Memory.UsedBytes);
-            */
-
-
+                        
             wifi = new SPWF04SxInterfaceRoSchmi(spi, irq, reset);
-
-            /*
-            totalMemory = GC.GetTotalMemory(true);
-            Debug.WriteLine("Total Memory: " + totalMemory.ToString());
-            Debug.WriteLine("Remaining Ram after creating wifi: " + GHIElectronics.TinyCLR.Native.Memory.FreeBytes + " used Bytes: " + GHIElectronics.TinyCLR.Native.Memory.UsedBytes);
-            */
-
+            
             wiFi_SPWF04S_Mgr = new WiFi_SPWF04S_Mgr(wifi, wiFiSSID_1, wiFiKey_1);
-
-            /*
-            totalMemory = GC.GetTotalMemory(true);
-            Debug.WriteLine("Total Memory: " + totalMemory.ToString());
-            Debug.WriteLine("Remaining Ram after creating wifi_SPWF04S_Mrg: " + GHIElectronics.TinyCLR.Native.Memory.FreeBytes + " used Bytes: " + GHIElectronics.TinyCLR.Native.Memory.UsedBytes);
-            */
-
+            
             wiFi_SPWF04S_Mgr.PendingSocketData += WiFi_SPWF04S_Device_PendingSocketData;
             wiFi_SPWF04S_Mgr.SocketWasClosed += WiFi_SPWF04S_Device_SocketWasClosed;
             wiFi_SPWF04S_Mgr.Ip4AddressAssigned += WiFi_SPWF04S_Device_Ip4AddressAssigned;
             wiFi_SPWF04S_Mgr.DateTimeNtpServerDelivered += WiFi_SPWF04S_Device_DateTimeNtpServerDelivered;           
             wiFi_SPWF04S_Mgr.WiFiNetworkLost += WiFi_SPWF04S_Device_WiFiNetworkLost;
-
 
             wiFi_SPWF04S_Mgr.Initialize();
            
@@ -231,8 +206,7 @@ namespace AzureDataSender_FEZ
 
            
             waitForWiFiReady.WaitOne(10000, true);  // ******** Wait 15 sec to scan for wlan devices   ********************
-
-         
+        
             for (int i = 0; i < 400; i++)    // Wait up to 40 sec for getting IP-Address and time
             {
                 Thread.Sleep(100);
@@ -263,22 +237,11 @@ namespace AzureDataSender_FEZ
 
             
             wifi.SetConfiguration("ramdisk_memsize", "18");        // Reserve more Ram on SPWF04Sx  (not needed in this App)
-            //wifi.SetConfiguration("ip_ntp_startup", "0");          // switch off ntp client
+            //wifi.SetConfiguration("ip_ntp_startup", "0");        // switch off ntp client
             //wifi.SaveConfiguration();
-
-            //wifi.SetConfiguration("ip_ntp_refresh", "30");      // Set NTP_Refresh every 0.5 hours            
-            //wifi.SaveConfiguration();
-            //string cfg = wifi.GetConfiguration("ip_ntp_refresh");
-            //string cfg = wifi.GetConfiguration("ip_ntp_startup");
-            // wifi.Reset();
-           
-            
+                               
             wifi.ClearTlsServerRootCertificate();
-
-            
-
-          //  ArrayList theQuery = new ArrayList();
-
+                  
             #region Region: List of additional commands for file handling  *** only for demonstration  ***
             // do not delete
             /*
@@ -305,49 +268,37 @@ namespace AzureDataSender_FEZ
             #endregion
 
 
-            totalMemory = GC.GetTotalMemory(true);
-            Debug.WriteLine("Total Memory: " + totalMemory.ToString());
-            Debug.WriteLine("Remaining Ram at end of main: " + GHIElectronics.TinyCLR.Native.Memory.FreeBytes + " used Bytes: " + GHIElectronics.TinyCLR.Native.Memory.UsedBytes);
-
-
-            //getSensorDataTimer = new System.Threading.Timer(new TimerCallback(getSensorDataTimer_tick), null, readInterval * 1000, 20 * 60 * 1000);
             getSensorDataTimer = new System.Threading.Timer(new TimerCallback(getSensorDataTimer_tick), null, readInterval * 1000, readInterval * 1000);
 
             // start timer to write analog data to the Cloud
             writeAnalogToCloudTimer = new System.Threading.Timer(new TimerCallback(writeAnalogToCloudTimer_tick), null, writeToCloudInterval * 1000, Timeout.Infinite);
+            // is started in writeAnalogToCloudTimer_tick event
             readLastAnalogRowTimer = new System.Threading.Timer(new TimerCallback(readLastAnalogRowTimer_tick), null, Timeout.Infinite, Timeout.Infinite);
-
+            
             while (true)
             {
                 Thread.Sleep(100);
             }              
         }
 
-        
-
         #endregion
 
         #region Timer Event: writeAnalogToCloudTimer_tick  --- Entity with analog values is written to the Cloud
         private static void writeAnalogToCloudTimer_tick(object state)
-        {
-            
+        {        
             writeAnalogToCloudTimer.Change(10 * 60 * 1000, 10 * 60 * 1000);    // Set to a long interval, so will not fire again before completed
 
             lock (LockProgram)
-            {
-
-                //  X509Certificate[] caCerts = new X509Certificate[] { new X509Certificate(Resources.GetBytes(Resources.BinaryResources.BaltimoreCyberTrustRoot)) };
-
+            {              
                 int yearOfSend = DateTime.Now.Year;
 
                 #region Region Create analogTable if not exists
                 HttpStatusCode resultTableCreate = HttpStatusCode.Ambiguous;
                 if (AnalogCloudTableYear != yearOfSend)
                 {
+                    Debug.WriteLine("\r\nGoing to create analog Table");
                     resultTableCreate = createTable(myCloudStorageAccount, caCerts, analogTableName + DateTime.Today.Year.ToString());
-                    // Set flag to indicate that table already exists, avoid trying to crea
-
-
+                    // Set flag to indicate that table already exists, avoid trying to create again
                 }
 
                 #endregion
@@ -391,32 +342,22 @@ namespace AzureDataSender_FEZ
 
                     AnalogTableEntity analogTableEntity = new AnalogTableEntity(partitionKey, rowKey, propertiesAL);
 
-                    Debug.WriteLine("Going to upload. Sampletime:               " + sampleTime);
-                    /*
-                    totalMemory = GC.GetTotalMemory(true);
-                    freeMemory = GHIElectronics.TinyCLR.Native.Memory.FreeBytes;
-                    Debug.WriteLine("Before 'insertTableEntity' command. Total Memory: " + totalMemory.ToString("N0") + "Free Bytes: " + freeMemory.ToString("N0"));
-                    */
-
+                    Debug.WriteLine("\r\nGoing to upload analog values.     SampleTime: " + sampleTime);
+                    
                     string insertEtag = string.Empty;
                     HttpStatusCode insertResult = HttpStatusCode.BadRequest;
 
                     insertResult = insertTableEntity(myCloudStorageAccount, caCerts, analogTableName + yearOfSend.ToString(), analogTableEntity, out insertEtag);
 
-
                     DateTime nextStart = DateTime.Now.AddSeconds(writeToCloudInterval);
                     if ((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict))
                     {
-                        Debug.WriteLine(((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)) ? "Succeded to insert Entity\r\n" : "Failed to insert Entity\r\n");
-
-                        //TimeSpan expectNtpEventSpan = dateTimeNtpServerDelivery.AddHours(1.0) - DateTime.Now;
-                        //int expectNtpEventInSeconds = (int)expectNtpEventSpan.TotalSeconds;
-                        
-
+                        Debug.WriteLine(((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)) ? "Succeded to insert Entity\r\n" : "Failed to insert Entity\r\n"); 
                         
                         if ((nextStart > dateTimeNtpServerDelivery.AddHours(1.0).AddSeconds(-10.0)) && nextStart < dateTimeNtpServerDelivery.AddHours(1.0).AddSeconds(20.0))
                         {
                             // delay the next timer event if NtpServerDelivery is expected to fall int the write action
+                            Debug.WriteLine("Delayed request, possibel Ntp interference");
                             writeAnalogToCloudTimer.Change((writeToCloudInterval + 10 + 20) * 1000, writeToCloudInterval * 1000);
                         }
                         else
@@ -429,29 +370,20 @@ namespace AzureDataSender_FEZ
                     }
                     else
                     {
-                        Debug.WriteLine(((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)) ? "Succeded to insert Entity\r\n" : "Failed to insert Entity ****************************************************\r\n");
+                        Debug.WriteLine(((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)) ? "Succeded to insert Entity\r\n" : "Failed to insert Entity\r\n");
 
                         if (DateTime.Now < dateTimeNtpServerDelivery.AddHours(1.0).AddSeconds(-10.0))
                         {
                             // delay the next timer event if NtpServerDelivery is expected to fall int the write action
+                            Debug.WriteLine("Delayed repeated request");
                             writeAnalogToCloudTimer.Change((10 + 20) * 1000, writeToCloudInterval * 1000);
                         }
                         else
                         {
                             writeAnalogToCloudTimer.Change(1000, writeToCloudInterval * 1000);
                         }
-                    }
-
-                   
+                    }                  
                 }
-
-
-                /*
-                totalMemory = GC.GetTotalMemory(true);
-                freeMemory = GHIElectronics.TinyCLR.Native.Memory.FreeBytes;
-                Debug.WriteLine("At end of Timer event. Total memory: " + totalMemory.ToString("N0") + " Free Memory: " + freeMemory.ToString("N0"));
-                */
-
             }
         }
         #endregion
@@ -489,27 +421,23 @@ namespace AzureDataSender_FEZ
 
         private static void OnOffSensor01_ValueChanged(GpioPin sender, GpioPinValueChangedEventArgs e)
         {
-
             lock (LockProgram)
             {
-
                 int yearOfSend = DateTime.Now.Year;
 
                 // Create OnOffTable if not exists
                 HttpStatusCode resultTableCreate = HttpStatusCode.Ambiguous;
                 if (OnOffTable01Year != yearOfSend)
                 {
-                    resultTableCreate = createTable(myCloudStorageAccount, caCerts, OnOffSensor01TableName + DateTime.Today.Year.ToString());
-                    var dummy345 = 1;
+                    Debug.WriteLine("Going to create On/Off Table");
+                    resultTableCreate = createTable(myCloudStorageAccount, caCerts, OnOffSensor01TableName + DateTime.Today.Year.ToString());                  
                 }
-
 
                 if ((resultTableCreate == HttpStatusCode.Created) || (resultTableCreate == HttpStatusCode.NoContent) || (resultTableCreate == HttpStatusCode.Conflict))
                 {
                     OnOffTable01Year = yearOfSend;
                 }
-                //else
-                //{
+               
                 string partitionKey = makePartitionKey(onOffTablePartPrefix, augmentPartitionKey);
 
                 DateTime actDate = DateTime.Now;
@@ -517,9 +445,9 @@ namespace AzureDataSender_FEZ
 
                 string sampleTime = actDate.Month.ToString("D2") + "/" + actDate.Day.ToString("D2") + "/" + actDate.Year + " " + actDate.Hour.ToString("D2") + ":" + actDate.Minute.ToString("D2") + ":" + actDate.Second.ToString("D2");
 
-                TimeSpan tflSend = OnOffSensor01LastSendTime == DateTime.MinValue ? new TimeSpan(0) : e.Timestamp.Date - OnOffSensor01LastSendTime;
+                TimeSpan tflSend = OnOffSensor01LastSendTime == DateTime.MinValue ? new TimeSpan(0) : e.Timestamp - OnOffSensor01LastSendTime;
 
-                OnOffSensor01LastSendTime = e.Timestamp.Date;
+                OnOffSensor01LastSendTime = e.Timestamp;
 
                 string timeFromLastSendAsString = tflSend.Days.ToString("D3") + "-" + tflSend.Hours.ToString("D2") + ":" + tflSend.Minutes.ToString("D2") + ":" + tflSend.Seconds.ToString("D2");
 
@@ -527,7 +455,6 @@ namespace AzureDataSender_FEZ
 
                 string onTimeDayAsString = OnOffSensor01OnTimeDay.Days.ToString("D3") + "-" + OnOffSensor01OnTimeDay.Hours.ToString("D2") + ":" + OnOffSensor01OnTimeDay.Minutes.ToString("D2") + ":" + OnOffSensor01OnTimeDay.Seconds.ToString("D2");
 
-                //ArrayList propertiesAL = OnOffTablePropertiesAL.OnOffPropertiesAL(e.ActState == true ? "On" : "Off", e.OldState == true ? "On" : "Off", onTimeDayAsString, sampleTime, timeFromLastSendAsString);
                 ArrayList propertiesAL = OnOffTablePropertiesAL.OnOffPropertiesAL(OnOffSensor01.Read() == GpioPinValue.Low ? "On" : "Off", OnOffSensor01.Read() == GpioPinValue.Low ? "Off" : "On", onTimeDayAsString, sampleTime, timeFromLastSendAsString);
 
                 OnOffTableEntity onOffTableEntity = new OnOffTableEntity(partitionKey, rowKey, propertiesAL);
@@ -549,8 +476,7 @@ namespace AzureDataSender_FEZ
                     {
                         Debug.WriteLine(((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)) ? "Succeded to insert Entity\r\n" : "Failed to insert Entity ****************************************************\r\n");
                     }
-                }
-                //}
+                }               
             }
         }
 
@@ -661,8 +587,7 @@ namespace AzureDataSender_FEZ
         private static void WiFi_SPWF04S_Device_DateTimeNtpServerDelivered(WiFi_SPWF04S_Mgr sender, WiFi_SPWF04S_Mgr.NTPServerDeliveryEventArgs e)
         {
             lock (LockProgram)
-            {
-                AzureStorageHelper.NTPServerDelivered = true;
+            {               
                 dateTimeNtpServerDelivery = e.DateTimeNTPServer;           
                 SystemTime.SetTime(dateTimeNtpServerDelivery, timeZoneOffset);
                 dateTimeAndIpAddressAreSet = true;

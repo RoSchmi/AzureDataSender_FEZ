@@ -59,8 +59,7 @@ namespace RoSchmi.Net.Azure.Storage
         public static bool WiFiNetworkLost
         { get; set; }
 
-        public static bool NTPServerDelivered
-        { get; set; }
+        
 
 
 
@@ -365,13 +364,7 @@ namespace RoSchmi.Net.Azure.Storage
                         int loopLimit = 15;     // max 15 retries
                         long totalMemory = 0;
 
-                        if (NTPServerDelivered)  // if NTPServerDelivered give up and make a new request
-                        {
-                            Debug.WriteLine("Gave up, NTPServerDelivered occured");
-                            NTPServerDelivered = false;
-                            return new BasicHttpResponse() { ETag = null, Body = "", StatusCode = HttpStatusCode.NotFound };
-                        }
-
+                     
                         do
                         {                           
                             totalMemory = GC.GetTotalMemory(true);
@@ -379,9 +372,9 @@ namespace RoSchmi.Net.Azure.Storage
                             #region try 1.5 second repeatedly to open socket (10 times)
                             id = -1;
                             int socketTimeCtr = 0;
-                            while ((id == -1) && !NTPServerDelivered && (socketTimeCtr < 15))
+                            while ((id == -1) && (socketTimeCtr < 15))
                             {
-                                Debug.WriteLine("Going to open socket");                               
+                                // Debug.WriteLine("Going to open socket");                               
                                 totalMemory = GC.GetTotalMemory(true);
 
                                 id = wifi.OpenSocket(url.Host, port, SPWF04SxConnectionType.Tcp, securityType);
@@ -396,22 +389,15 @@ namespace RoSchmi.Net.Azure.Storage
 
                             if (id == -1)
                             {
-                                Debug.WriteLine("Finally failed to open socket");
-                                NTPServerDelivered = false;
+                                Debug.WriteLine("Finally failed to open socket");                                
                                 return new BasicHttpResponse() { ETag = null, Body = "", StatusCode = HttpStatusCode.Ambiguous };
                             }
                             #endregion
 
-                            Debug.WriteLine("Succeeded to open socket on try: " + socketTimeCtr.ToString());
+                            // Debug.WriteLine("Succeeded to open socket on try: " + socketTimeCtr.ToString());
 
                             totalMemory = GC.GetTotalMemory(true);
-
-                            if (NTPServerDelivered)                               
-                            {
-                                Debug.WriteLine("Posible NTP-Server Delivery interference");  // we return with 
-                                return new BasicHttpResponse() { ETag = null, Body = "", StatusCode = HttpStatusCode.Ambiguous };
-                            }
-
+                          
                             SocketDataPending = false;
                             
                             wifi.WriteSocket(id, requestBinary);
@@ -423,15 +409,9 @@ namespace RoSchmi.Net.Azure.Storage
                             {
                                 Thread.Sleep(100);
                             }
-
-                            if (NTPServerDelivered)
-                            {
-                                Debug.WriteLine("NtpServser 03");
-                                return new BasicHttpResponse() { ETag = null, Body = "", StatusCode = HttpStatusCode.Ambiguous };
-                            }
-
+              
                             timeCtr++;
-                            Debug.WriteLine("Write Try: " + timeCtr.ToString());
+                            // Debug.WriteLine("Write Try: " + timeCtr.ToString());
                             if (!SocketDataPending && timeCtr < loopLimit)
                             {
                                 wifi.CloseSocket(id);
