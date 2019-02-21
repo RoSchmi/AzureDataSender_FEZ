@@ -309,6 +309,44 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         }
 
         /// <summary>
+        /// Save the configuration of the SPWF04 module to the Flash.        
+        /// </summary>
+        public void SaveConfiguration()
+        {
+            var cmd = this.GetCommand()           
+            .Finalize(SPWF04SxCommandIds.WCFG);
+            this.EnqueueCommand(cmd);
+            cmd.ReadBuffer();
+            this.FinishCommand(cmd);          
+        }
+
+        
+        
+        /// <summary>
+        /// Get the configuration of the SPWF04 module.        
+        /// </summary>
+        /// <param name="configVariable">The configuration variable to retrieve. Leaving empty means all.</param>
+        public string GetConfiguration(string configVariable)
+        {                     
+              var cmd = this.GetCommand()
+               .AddParameter(configVariable)
+               .Finalize(SPWF04SxCommandIds.GCFG);           
+            this.EnqueueCommand(cmd);
+            StringBuilder stringBuilder = new StringBuilder("");
+            byte[] readBuf = new byte[50];
+            int len = readBuf.Length;
+            while (len > 0)
+            {
+                len = cmd.ReadBuffer(readBuf, 0, len);
+                stringBuilder.Append(Encoding.UTF8.GetString(readBuf));
+                readBuf = new byte[len];
+            }
+            this.FinishCommand(cmd);
+            return stringBuilder.ToString();
+        }
+
+        
+        /// <summary>
         /// Gets time and date of SPWF04Sx module
         /// </summary>
         public string GetTime()
@@ -594,12 +632,6 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             this.EnqueueCommand(this.activeHttpCommand);
 
         */
-
-
-
-
-
-
 
             public int SendHttpPost(string host, string path, int port, SPWF04SxConnectionSecurityType connectionSecurity, string in_filename, string out_filename, byte[] request)
             {

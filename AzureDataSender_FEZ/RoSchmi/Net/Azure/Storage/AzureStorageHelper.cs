@@ -340,7 +340,7 @@ namespace RoSchmi.Net.Azure.Storage
                         */
                         #endregion
 
-                        #region Wait 2 seconds for recovery when Network lost and functioning WifiAssociation
+                        #region Wait 2 seconds for recovery when Network lost
                         int timeCtr = 0;
                         //while (((WiFiAssociationState == false) || WiFiNetworkLost) && (timeCtr < 20 ))   // Wait 2 sec for WifiAssociation, if not there --> return
                         while (WiFiNetworkLost && (timeCtr < 20))   // Wait 2 sec for WifiNetWorkLost, if not there --> return
@@ -364,18 +364,24 @@ namespace RoSchmi.Net.Azure.Storage
                         timeCtr = 0;
                         int loopLimit = 15;     // max 15 retries
                         long totalMemory = 0;
-                        do
+
+                        if (NTPServerDelivered)  // if NTPServerDelivered give up and make a new request
                         {
+                            Debug.WriteLine("Gave up, NTPServerDelivered occured");
+                            NTPServerDelivered = false;
+                            return new BasicHttpResponse() { ETag = null, Body = "", StatusCode = HttpStatusCode.NotFound };
+                        }
+
+                        do
+                        {                           
                             totalMemory = GC.GetTotalMemory(true);
                             
-
                             #region try 1.5 second repeatedly to open socket (10 times)
                             id = -1;
                             int socketTimeCtr = 0;
-                            while ((id == -1) && (socketTimeCtr < 15))
+                            while ((id == -1) && !NTPServerDelivered && (socketTimeCtr < 15))
                             {
-                                Debug.WriteLine("Going to open socket");
-                                NTPServerDelivered = false;
+                                Debug.WriteLine("Going to open socket");                               
                                 totalMemory = GC.GetTotalMemory(true);
 
                                 id = wifi.OpenSocket(url.Host, port, SPWF04SxConnectionType.Tcp, securityType);
@@ -391,6 +397,7 @@ namespace RoSchmi.Net.Azure.Storage
                             if (id == -1)
                             {
                                 Debug.WriteLine("Finally failed to open socket");
+                                NTPServerDelivered = false;
                                 return new BasicHttpResponse() { ETag = null, Body = "", StatusCode = HttpStatusCode.Ambiguous };
                             }
                             #endregion
@@ -412,9 +419,15 @@ namespace RoSchmi.Net.Azure.Storage
                             {
                                 wifi.WriteSocket(id, payload);
                             }
-                            for (int i = 0; i < 5; i++)    // wait for 1000 ms for pending data
+                            for (int i = 0; i < 5; i++)    // wait for 500 ms for pending data
                             {
-                                Thread.Sleep(200);
+                                Thread.Sleep(100);
+                            }
+
+                            if (NTPServerDelivered)
+                            {
+                                Debug.WriteLine("NtpServser 03");
+                                return new BasicHttpResponse() { ETag = null, Body = "", StatusCode = HttpStatusCode.Ambiguous };
                             }
 
                             timeCtr++;

@@ -64,6 +64,18 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             wiFiSPWF04S.ResetConfiguration();
             Thread.Sleep(100);
             waitForConsoleActive.Reset();
+
+            /*
+            wiFiSPWF04S.SetConfiguration("ramdisk_memsize", "18");        // Reserve more Ram on SPWF04Sx  (not needed in this App)
+            wiFiSPWF04S.SetConfiguration("ip_ntp_startup", "0");
+            wiFiSPWF04S.SaveConfiguration();
+            wiFiSPWF04S.SetConfiguration("ip_ntp_refresh", "60");           
+            wiFiSPWF04S.SaveConfiguration();
+            wiFiSPWF04S.SetConfiguration("ip_ntp_startup", "1");
+            wiFiSPWF04S.SaveConfiguration();
+            string cfg = wiFiSPWF04S.GetConfiguration("ip_ntp_refresh");
+            */
+
             wiFiSPWF04S.Reset();
             waitForConsoleActive.WaitOne();
 
@@ -81,35 +93,31 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                 }
                 Thread.Sleep(500);
             }
-            Debug.WriteLine("Scanning finished");
-            //try
-            //{
-            wiFiSPWF04S.JoinNetwork(wiFiSSID, wiFiKey);
-            //}
-            //catch (Exception ex)
-            //{
-            //    var message = ex.Message;
-            //}
-            /*
-            while (true)
-            {
-                Thread.Sleep(100);
-            }
-            */
+            Debug.WriteLine("Scanning finished");          
+            wiFiSPWF04S.JoinNetwork(wiFiSSID, wiFiKey);           
         }
 
         #region IndicationReceived
         private void WiFiSPWF04S_IndicationReceived(SPWF04SxInterfaceRoSchmi sender, SPWF04SxIndicationReceivedEventArgs e)
-        {
-
-            //Debug.WriteLine($"WIND: {WindToName(e.Indication)} {e.Message}");
-            if (e.Indication != SPWF04SxIndication.WpaCrunchingPsk)
+        {          
+            switch (e.Indication)
             {
-                Debug.WriteLine($"WIND: {WindToName(e.Indication)} {e.Message}");
-            }
-            else
-            {
-                Debug.WriteLine($"WIND: {WindToName(e.Indication)} {"***"}");
+                case SPWF04SxIndication.WpaCrunchingPsk:
+                    {
+                        Debug.WriteLine($"WIND: {WindToName(e.Indication)} {"***"}");
+                    }
+                    break;
+                case SPWF04SxIndication.SocketClosed:
+                    { }
+                    break;
+                case SPWF04SxIndication.PendingData:
+                    { }
+                    break;
+                default:
+                    {
+                        Debug.WriteLine($"WIND: {WindToName(e.Indication)} {e.Message}");
+                    }
+                    break;
             }
 
             switch (e.Indication)
@@ -118,19 +126,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                     {
                         OnWiFiNetworkLostEvent(this, new WiFiNetworkLostEventArgs(true));
                     }
-                    break;
-                    /*
-                case SPWF04SxIndication.WiFiDisassociation:
-                    {
-                        OnWiFiAssociationEvent(this, new WiFiAssociationEventArgs(false));
-                    }
-                    break;
-                case SPWF04SxIndication.WiFiAssociationSuccessful:
-                    {
-                        OnWiFiAssociationEvent(this, new WiFiAssociationEventArgs(true));
-                    }
-                    break;
-                    */
+                    break;                   
                 case SPWF04SxIndication.PendingData:
                     {
                         OnPendingData(this, new PendingDataEventArgs(true));
@@ -159,7 +155,6 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                             catch
                             {
                                 Debug.WriteLine("Parse Ip Error");
-
                             }
                         }
                     }
@@ -182,7 +177,10 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                     }
                     break;
                 default:
-                    { }
+                    {
+
+
+                    }
                     break;
             }
         }
