@@ -718,7 +718,7 @@ namespace AzureDataSender_FEZ
             table = new TableClient(pCloudStorageAccount, pCaCerts, _debug, _debug_level, wifi);
 
 
-            // To use Fiddler as WebProxy include the following line. Use the local IP-Address of the PC where Fiddler is running
+            // To use Fiddler as WebProxy include the  following line. Use the local IP-Address of the PC where Fiddler is running
             // see: -http://blog.devmobile.co.nz/2013/01/09/netmf-http-debugging-with-fiddler
             //if (attachFiddler)
             //{ table.attachFiddler(true, fiddlerIPAddress, fiddlerPort); }
