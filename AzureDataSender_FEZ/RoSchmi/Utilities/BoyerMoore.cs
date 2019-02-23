@@ -1,6 +1,5 @@
 ﻿// adapted from -https://stackoverflow.com/questions/37500629/find-byte-sequence-within-a-byte-array
 
-
 using System;
 using System.Collections;
 using System.Text;

@@ -7,7 +7,7 @@ using System.Net.NetworkInterface;
 using System.Net;
 using System.Security.Cryptography.X509Certificates;
 using GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx;
-using RoSchmi.Interfaces;
+
 
 
 namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
@@ -574,8 +574,5 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             }
         }
         #endregion
-
-
-
     }
 }

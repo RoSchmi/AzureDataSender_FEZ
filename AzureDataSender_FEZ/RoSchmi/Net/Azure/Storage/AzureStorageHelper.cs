@@ -1,8 +1,6 @@
-// Version 2.0 28.05.2016
+// Version for FEZ with SPWF04SA 23.02.2019
 using System;
-//using Microsoft.SPOT;
 using System.Net;
-//using Microsoft.SPOT.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.IO;
 using System.Collections;
@@ -58,11 +56,7 @@ namespace RoSchmi.Net.Azure.Storage
 
         public static bool WiFiNetworkLost
         { get; set; }
-
-        
-
-
-
+       
         #region "Debugging"
         private static DebugMode _debug = DebugMode.NoDebug;
         private static DebugLevel _debug_level = DebugLevel.DebugErrors;
@@ -170,9 +164,7 @@ namespace RoSchmi.Net.Azure.Storage
                 _fiddlerPort = pfiddlerPort;
             }
         }
-
-        
-
+      
         public static BasicHttpResponse SendWebRequest(SPWF04SxInterfaceRoSchmi spwf04sx, X509Certificate[] certificates, Uri url, string authHeader, string dateHeader, string versionHeader, byte[] payload = null, int contentLength = 0, string httpVerb = "GET", bool expect100Continue = false, string acceptType = "application/json;odata=minimalmetadata", Hashtable additionalHeaders = null)
         {
             caCerts = certificates;
@@ -340,8 +332,7 @@ namespace RoSchmi.Net.Azure.Storage
                         #endregion
 
                         #region Wait 2 seconds for recovery when Network lost
-                        int timeCtr = 0;
-                        //while (((WiFiAssociationState == false) || WiFiNetworkLost) && (timeCtr < 20 ))   // Wait 2 sec for WifiAssociation, if not there --> return
+                        int timeCtr = 0;                       
                         while (WiFiNetworkLost && (timeCtr < 20))   // Wait 2 sec for WifiNetWorkLost, if not there --> return
                         {
                             if (timeCtr > 0)
@@ -358,13 +349,11 @@ namespace RoSchmi.Net.Azure.Storage
                         }
                         #endregion
 
-
                         int id = -1;
                         timeCtr = 0;
                         int loopLimit = 15;     // max 15 retries
                         long totalMemory = 0;
-
-                     
+                    
                         do
                         {                           
                             totalMemory = GC.GetTotalMemory(true);
@@ -449,7 +438,6 @@ namespace RoSchmi.Net.Azure.Storage
                             Thread.Sleep(100);
                             timeCtr++;
                         }
-
 
                         wifi.CloseSocket(id);
                         lastBuf = null;
@@ -824,7 +812,6 @@ namespace RoSchmi.Net.Azure.Storage
             {
                 requ.Append("\r\n");
             }
-
 
             return requ.ToString();
         }

@@ -166,15 +166,7 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                 remaining -= actual;
             }
 
-            // By RoSchmi
-            /*
-            if (this.readPayload.Data.Length > 4)
-            {
-                byte[] PrintOut = new byte[this.readPayload.Data.Length -4];
-                Array.Copy(this.readPayload.Data, 4, PrintOut, 0, this.readPayload.Data.Length - 4);
-                Debug.WriteLine("Readpayload.Data: " + Encoding.UTF8.GetString(PrintOut));
-            }
-            */
+            
             lock (this.pendingReads)
             {
                 this.pendingReads.Enqueue(count);
@@ -195,10 +187,7 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                 {
                     throw new Exception("Not complete");
                 }
-                  
-
-                //if (!this.Sent || this.pendingReads.Count > 2)
-                //      throw new Exception("Not complete");
+                                
 
             this.Sent = false;
             this.parameterCount = 0;

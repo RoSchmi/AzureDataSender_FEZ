@@ -547,11 +547,9 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             Debug.WriteLine("1 " + result);
             if (connectionSecurity == SPWF04SxConnectionSecurityType.Tls && result == string.Empty)
             {
-                result = this.activeHttpCommand.ReadString();
-                //Debug.WriteLine("2 " + result);
+                result = this.activeHttpCommand.ReadString();              
                 if (result.IndexOf("Loading:") == 0)
-                    result = this.activeHttpCommand.ReadString();
-                //Debug.WriteLine("3 " + result);
+                    result = this.activeHttpCommand.ReadString();              
             }
             
             // Changed by RoSchmi

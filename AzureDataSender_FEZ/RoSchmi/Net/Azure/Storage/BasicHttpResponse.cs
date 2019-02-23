@@ -1,5 +1,4 @@
 using System;
-//using Microsoft.SPOT;
 using System.Net;
 
 namespace RoSchmi.Net.Azure.Storage

@@ -1,10 +1,11 @@
-﻿// Copyright RoSchmi 2019
+﻿// Copyright RoSchmi 2019 License Apache 2.0
+// Version 1.0.0 23.02.2019
 // App to write sensor data to Azure Storage Table service
 // For TinyCLR Board FEZ with SPWF04Sx Wifi module
 
 // With #define UseTestValues you can select if data are read from sensors or if simulated data (sinus curves) are used
 
-#define UseTestValues
+// #define UseTestValues
 
 #region Using directives
 using System;
@@ -31,7 +32,6 @@ using RoSchmi.DayLightSavingTime;
 using GHIElectronics.TinyCLR.Native;
 using PervasiveDigital.Utilities;
 using AzureDataSender.Models;
-using RoSchmi.Interfaces;
 using AzureDataSender;
 #endregion
 
@@ -65,7 +65,7 @@ namespace AzureDataSender_FEZ
         // Set intervals (in seconds, invalidateInterval in minutes)
         static int readInterval = 4;                     // in this interval (seconds) analog sensors are read
 
-        //static int writeToCloudInterval = 600;        // in this interval (seconds) the analog data are stored to the cloud
+        //static int writeToCloudInterval = 600;        // in this interval (seconds) the analog data are stored to the cloud (600 = 10 min is recommended)
         static int writeToCloudInterval = 45;      
 
         static int invalidateIntervalMinutes = 15;      // if analog values ar not actualized in this interval, they are set to invalid (999.9)
@@ -203,8 +203,7 @@ namespace AzureDataSender_FEZ
             wiFi_SPWF04S_Mgr.Initialize();
            
             myCloudStorageAccount = new CloudStorageAccount(storageAccountName, storageKey, useHttps: Azure_useHTTPS);
-
-           
+          
             waitForWiFiReady.WaitOne(10000, true);  // ******** Wait 15 sec to scan for wlan devices   ********************
         
             for (int i = 0; i < 400; i++)    // Wait up to 40 sec for getting IP-Address and time
@@ -238,11 +237,11 @@ namespace AzureDataSender_FEZ
             wifi.SetConfiguration("ramdisk_memsize", "18");        // Reserve more Ram on SPWF04Sx  (not needed in this App)
 
             // Tests with changing ntp-refresh time, didn't get it working
-            //wifi.SetConfiguration("ip_ntp_refresh", "30");         // set refresh time
-            string readBack = wifi.GetConfiguration("ip_ntp_refresh");
-            //readBack = wifi.GetConfiguration("console_wind_off_high");
-            //wifi.SetConfiguration("ip_ntp_startup", "0");        // switch off ntp client
-            //wifi.SaveConfiguration();
+            // wifi.SetConfiguration("ip_ntp_refresh", "30");         // set refresh time
+            // string readBack = wifi.GetConfiguration("ip_ntp_refresh");
+            // readBack = wifi.GetConfiguration("console_wind_off_high");
+            // wifi.SetConfiguration("ip_ntp_startup", "0");        // switch off ntp client
+            // wifi.SaveConfiguration();
 
 
             wifi.ClearTlsServerRootCertificate();
@@ -363,18 +362,16 @@ namespace AzureDataSender_FEZ
                     watchdogIsActive = false;
 
                     DateTime nextRequestStart = DateTime.Now.AddSeconds(writeToCloudInterval);
-                    int requestDuration = 25;
-                   
-                    
+                    int requestDuration = 25;                                     
                     DateTime expectedNtpTime = dateTimeNtpServerDelivery.AddMinutes(timeZoneOffset + 60.0);
                     int preTimespanSec = 10;
                     int postTimespanSec = 60;
 
                     if ((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict))
                     {
-                        Debug.WriteLine(((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)) ? "Succeded to insert Entity\r\n" : "Failed to insert Entity\r\n");
+                        Debug.WriteLine(((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)) ? "Succeeded to insert Entity\r\n" : "Failed to insert Entity\r\n");
 
-                        Debug.WriteLine("nextRequestStart: " + nextRequestStart + " BeginBlankTime: " + expectedNtpTime.AddSeconds(-preTimespanSec - requestDuration) + " EndBlankTime: " + expectedNtpTime.AddSeconds(postTimespanSec));
+                        Debug.WriteLine("Next RequestStart: " + nextRequestStart + " BeginBlankTime: " + expectedNtpTime.AddSeconds(-preTimespanSec - requestDuration) + " EndBlankTime: " + expectedNtpTime.AddSeconds(postTimespanSec));
                         if ((nextRequestStart > expectedNtpTime.AddSeconds(-preTimespanSec - requestDuration)) && nextRequestStart < expectedNtpTime.AddSeconds(postTimespanSec))
                         {
                             // delay the next timer event if NtpServerDelivery is expected to fall into the write action
@@ -416,7 +413,7 @@ namespace AzureDataSender_FEZ
         {           
             lock (LockProgram)
             {
-                Debug.WriteLine("Going read back last uploaded entity");
+                Debug.WriteLine("Going to read back last uploaded entity");
                 ArrayList queryResult = new ArrayList();
 
                 watchdogIsActive = true;

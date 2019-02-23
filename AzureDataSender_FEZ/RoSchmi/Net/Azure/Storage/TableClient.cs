@@ -1,5 +1,5 @@
 // Copyright RoSchmi 2019 License Apache 2.0
-// Version 1.0 11.02.2019 for TinyCLR v1.0.0
+// Version  23.02.2019 for TinyCLR v1.0.0
 // Parts of the code were taken from
 // AndyCross: netmfazurestorage / Table / TableClient.cs
 // -https://github.com/azure-contrib/netmfazurestorage/blob/master/netmfazurestorage/Table/TableClient.cs
@@ -19,7 +19,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Diagnostics;
 using RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx;
 using AzureDataSender_FEZ;
-//using PervasiveDigital.Json;
+
 
 
 namespace RoSchmi.Net.Azure.Storage
@@ -500,13 +500,7 @@ namespace RoSchmi.Net.Azure.Storage
                         //response.Body = response.Body.Substring(0, response.Body.Length - 7);
                         //var newInstance = (QueryEntity)JsonConverter.DeserializeObject(response.Body, typeof(QueryEntity), CreateInstance);      
                 }
-
-                /*
-                totalMemory = GC.GetTotalMemory(true);
-                freeMemory = GHIElectronics.TinyCLR.Native.Memory.FreeBytes;
-                Debug.WriteLine("TableClient: before filling _OperationResponseBody. Total Memory: " + totalMemory.ToString("N0") + "Free Bytes: " + freeMemory.ToString("N0"));
-                */
-
+               
                 _OperationResponseBody = response.Body.Substring(0, Math.Min(response.Body.Length, 300));   // not more than 300 char
 
                 if (entities.Count == 1)
