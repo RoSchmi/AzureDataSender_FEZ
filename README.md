@@ -3,6 +3,8 @@ This is work in progress. It works now (23.02.2019) quite stable but isn't teste
 
 App for [GHI Electronics FEZ](https://ghielectronics.com/products/fez) with SPWF04SA Board writes data to Azure Storage Tables to be visualized by Microsoft Azure Storage Explorer or the iOS App ['AzureTabStorClient'](https://itunes.apple.com/us/app/azuretabstorclient/id1399683806). (For details visit this [Page](https://azuretabstorclient.wordpress.com/))
 
+The FEZ Mainboard can be programmed in C# on top of GHI-Electronics TinyCLR firmware (an OS with a subset of .NET like the still perhaps better known .NET Micro Framework NETMF)
+
 Sensor data are transfered to Azure using TLS 1.2 secured transmission (https). Reading back stored Data from Azure actually works only over unsecure transmission (http).
 
 Data stored (in special format) in Azure Storage Tables can then be visulized with the iOS App Store App: ['Charts4Azure'](https://itunes.apple.com/us/app/charts4azure/id1442910354?mt=8)
