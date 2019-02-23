@@ -21,7 +21,7 @@ On Pressing or Relasing of BTN1 of the FEZ-Board (between press and release shou
 
 #### Known Issues/Limitations:
 
-Because of the limited Ram of the used MCU (STM32F401) on the GHI Electronics FEZ Board only one Channel for On/Off sensor data is implemented. Loading up On/Off-Sensor-Data (Press and release Btn1) should only occur in a time when no analog data are loaded up.  For the same reason (Out of memory exceptions) actually there are frequent Reboots if the Watchdog is activated.
+Because of the limited Ram of the used MCU (STM32F401) on the GHI Electronics FEZ Board only one Channel for On/Off sensor data is implemented. Loading up On/Off-Sensor-Data (Press and release Btn1) should only occur in a time when no analog data are loaded up. The first pressing of BTN1 after powering up the board is not uplpaded to Azure. Because of Ram limitations of the board (Out of memory exceptions) actually there are frequent reboots if the Watchdog is activated.
 Reading back stored data from Azure actually works only unsecure (http).
 
 
