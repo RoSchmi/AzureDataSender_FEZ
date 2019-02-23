@@ -42,9 +42,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
         //Added by RoSchmi
         private bool SocketErrorHappened = false;
-
-
-        
+       
         public static SpiConnectionSettings GetConnectionSettings(SpiChipSelectType chipSelectType, int chipSelectLine) => new SpiConnectionSettings
         {
             ClockFrequency = 8000000,
@@ -261,8 +259,6 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             this.FinishCommand(cmd);
         }
 
-
-
         public void SendAT()
         {
             var cmd = this.GetCommand()             
@@ -271,7 +267,6 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             cmd.ReadBuffer();
             this.FinishCommand(cmd);
         }
-
 
             /// <summary>
             /// Mounts a memory volume
@@ -319,9 +314,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             cmd.ReadBuffer();
             this.FinishCommand(cmd);          
         }
-
-        
-        
+               
         /// <summary>
         /// Get the configuration of the SPWF04 module.        
         /// </summary>
@@ -344,8 +337,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             this.FinishCommand(cmd);
             return stringBuilder.ToString();
         }
-
-        
+       
         /// <summary>
         /// Gets time and date of SPWF04Sx module
         /// </summary>
@@ -529,7 +521,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             cmd.ReadBuffer();         
         }
 
-
+        
         public int SendHttpGet(string host, string path, int port, SPWF04SxConnectionSecurityType connectionSecurity, string in_filename, string out_filename, byte[] request)
         {
             if (this.activeHttpCommand != null) throw new InvalidOperationException();
@@ -573,6 +565,46 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             }
         }
 
+        public int SendHttpPost(string host, string path, int port, SPWF04SxConnectionSecurityType connectionSecurity, string in_filename, string out_filename, byte[] request)
+        {
+            if (this.activeHttpCommand != null) throw new InvalidOperationException();
+
+            DeleteRamFile(in_filename);             // Delete possibly existing in_filename
+
+            DeleteRamFile(out_filename);             // Delete possibly existing out_filename
+
+            CreateRamFile(out_filename, request);
+
+            request = null;
+
+            GC.Collect();
+
+            this.activeHttpCommand = this.GetCommand()
+            .AddParameter(host)
+            .AddParameter(path)
+            .AddParameter(port.ToString())
+            .AddParameter(connectionSecurity == SPWF04SxConnectionSecurityType.None ? "0" : "2")
+            .AddParameter(null)
+            .AddParameter(null)
+            .AddParameter(in_filename)
+            .AddParameter(out_filename)
+            .Finalize(SPWF04SxCommandIds.HTTPPOST);
+
+            this.EnqueueCommand(this.activeHttpCommand);
+
+            var result = this.activeHttpCommand.ReadString();
+            if (connectionSecurity == SPWF04SxConnectionSecurityType.Tls && result == string.Empty)
+            {
+                result = this.activeHttpCommand.ReadString();
+
+                if (result.IndexOf("Loading:") == 0)
+                    result = this.activeHttpCommand.ReadString();
+            }
+
+            return result.Split(':') is var parts && parts[0] == "Http Server Status Code" ? int.Parse(parts[1]) : throw new Exception($"Request failed: {result}");
+        }
+
+
         //*************************************** End added by RoSchmi  ***************************************************
 
 
@@ -605,75 +637,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             return result.Split(':') is var parts && parts[0] == "Http Server Status Code" ? int.Parse(parts[1]) : throw new Exception($"Request failed: {result}");
         }
 
-        //**************************************    Added by RoSchmi    *******************************
-
-        /*
-        public int SendHttpGet(string host, string path, int port, SPWF04SxConnectionSecurityType connectionSecurity, string in_filename, string out_filename, byte[] request)
-        {
-            if (this.activeHttpCommand != null) throw new InvalidOperationException();
-
-            DeleteRamFile(in_filename);             // Delete possibly existing in_filename
-
-            DeleteRamFile(out_filename);             // Delete possibly existing out_filename
-
-            CreateRamFile(out_filename, request);
-
-            this.activeHttpCommand = this.GetCommand()
-                .AddParameter(host)
-                .AddParameter(path)
-                .AddParameter(port.ToString())
-                .AddParameter(connectionSecurity == SPWF04SxConnectionSecurityType.None ? "0" : "2")
-                .AddParameter(null)
-                .AddParameter(null)
-                .AddParameter(in_filename)
-                .AddParameter(out_filename)
-                .Finalize(SPWF04SxCommandIds.HTTPGET);
-
-            this.EnqueueCommand(this.activeHttpCommand);
-
-        */
-
-            public int SendHttpPost(string host, string path, int port, SPWF04SxConnectionSecurityType connectionSecurity, string in_filename, string out_filename, byte[] request)
-            {
-                if (this.activeHttpCommand != null) throw new InvalidOperationException();
-
-                DeleteRamFile(in_filename);             // Delete possibly existing in_filename
-
-                DeleteRamFile(out_filename);             // Delete possibly existing out_filename
-
-                CreateRamFile(out_filename, request);
-
-                request = null;
-
-                GC.Collect();
-
-                this.activeHttpCommand = this.GetCommand()
-                .AddParameter(host)
-                .AddParameter(path)
-                .AddParameter(port.ToString())
-                .AddParameter(connectionSecurity == SPWF04SxConnectionSecurityType.None ? "0" : "2")
-                .AddParameter(null)
-                .AddParameter(null)
-                .AddParameter(in_filename)
-                .AddParameter(out_filename)
-                .Finalize(SPWF04SxCommandIds.HTTPPOST);
-
-            this.EnqueueCommand(this.activeHttpCommand);
-
-            var result = this.activeHttpCommand.ReadString();
-            if (connectionSecurity == SPWF04SxConnectionSecurityType.Tls && result == string.Empty)
-            {
-                result = this.activeHttpCommand.ReadString();
-
-                if (result.IndexOf("Loading:") == 0)
-                    result = this.activeHttpCommand.ReadString();
-            }
-
-            return result.Split(':') is var parts && parts[0] == "Http Server Status Code" ? int.Parse(parts[1]) : throw new Exception($"Request failed: {result}");
-        }
-
-        //*************************    End added by RoSchmi     ***************************************************
-
+            
 
         public int SendHttpPost(string host, string path, int port, SPWF04SxConnectionSecurityType connectionSecurity)
         {
@@ -769,7 +733,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
             if (SocketErrorHappened)
             {
-                Debug.WriteLine("Socket Error happened **********************************************************");
+                Debug.WriteLine("Socket Error happened *****");
             }
 
             Debug.WriteLine("Socket:" + a + " " + b);
@@ -1040,7 +1004,14 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                                         // Seen after FSP Command
                                         //Debug.WriteLine("Indication: " + ind.ToString("X2") + " PayLoad = " + payloadLength.ToString());                                       
                                     }
-                                    break; 
+                                    break;
+                                case 0x04:
+                                    {
+                                        // Seen after bad formed configuration command
+                                        Debug.WriteLine("Indication: " + ind.ToString("X2") + " Wrong command format " + " Pld = " + payloadLength.ToString());                                       
+                                    }
+                                    break;
+
                                 case 0x2C:  // dec 44: wait for connection up
                                     {
                                         SocketErrorHappened = true;
@@ -1092,7 +1063,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                                     break;
                                 default:
                                     {
-                                        Debug.WriteLine("AT-S.ERROR x " + "Indication: " + ind.ToString("X2") +"PayLoad = " + payloadLength.ToString());
+                                        Debug.WriteLine("AT-S.ERROR x " + "Indication: " + ind.ToString("X2") +" Pld = " + payloadLength.ToString());
                                     }
                                     break;
                             }

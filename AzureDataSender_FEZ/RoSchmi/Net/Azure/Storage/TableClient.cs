@@ -301,8 +301,6 @@ namespace RoSchmi.Net.Azure.Storage
         #region InsertTabelEntity
         public HttpStatusCode InsertTableEntity(string tableName, TableEntity pEntity, ContType pContentType = ContType.applicationIatomIxml, AcceptType pAcceptType = AcceptType.applicationIjson, ResponseType pResponseType = ResponseType.returnContent, bool useSharedKeyLite = false)
         {
-            
-
             OperationResultsClear(); ;
             string timestamp = GetDateHeader();
             string content = string.Empty;
@@ -346,7 +344,6 @@ namespace RoSchmi.Net.Azure.Storage
             string ContentMD5 = string.Empty;
             byte[] hashContentMD5 = null;
 
-            //var authorizationHeader = CreateTableAuthorizationHeader(payload, StringUtilities.Format("/{0}/{1}", _account.AccountName, tableName + "()"), timestamp, HttpVerb, pContentType, out ContentMD5, useSharedKeyLite);
             var authorizationHeader = CreateTableAuthorizationHeader(payload, String.Format("/{0}/{1}", _account.AccountName, tableName + "()"), timestamp, HttpVerb, pContentType, out ContentMD5, out hashContentMD5, useSharedKeyLite);
 
             string urlPath = StringUtilities.Format("{0}", tableName);
@@ -797,16 +794,7 @@ namespace RoSchmi.Net.Azure.Storage
             }
         }
         #endregion
-
-        private static object CreateInstance(string path, string name, int length)
-        {
-            if (name == "intArray")
-                return new int[length];
-            else if (name == "stringArray")
-                return new string[length];
-            else
-                return null;
-        }
+      
     }
 }
 

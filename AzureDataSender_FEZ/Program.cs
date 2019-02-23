@@ -4,7 +4,7 @@
 
 // With #define UseTestValues you can select if data are read from sensors or if simulated data (sinus curves) are used
 
-//#define UseTestValues
+#define UseTestValues
 
 #region Using directives
 using System;
@@ -41,82 +41,95 @@ namespace AzureDataSender_FEZ
     class Program
     {
         #region Region Fields
+
+        //****************  Settings to be changed by user   ********************************* 
+
         private static AzureStorageHelper.DebugMode _debug = AzureStorageHelper.DebugMode.StandardDebug;
         private static AzureStorageHelper.DebugLevel _debug_level = AzureStorageHelper.DebugLevel.DebugAll;
              
         private static int timeZoneOffset = 60;      // Berlin offest in minutes of your timezone to Greenwich Mean Time (GMT) 
+
+        private static bool workWithWatchdog = false;    // with watchdog activated OutOfMemory exceptions are thrown, test if watchdog works for you
+
+        // Set the name of the table for analog values (name must be conform to special rules: see Azure)
+        private static string analogTableName = "AnalogTestValues";
+
+        private static string analogTablePartPrefix = "Y2_";     // Your choice (name must be conform to special rules: see Azure)
+        private static bool augmentPartitionKey = true;          // If true, the actual year is added as suffix to the Tablenames
+
+        // Set the name of the table for On/Off values (name must be conform to special rules: see Azure)
+        private static string OnOffSensor01TableName = "OnOffValues01";                
+
+        static string onOffTablePartPrefix = "Y3_";             // Your choice (name must be conform to special rules: see Azure)
+
+        // Set intervals (in seconds, invalidateInterval in minutes)
+        static int readInterval = 4;                     // in this interval (seconds) analog sensors are read
+
+        //static int writeToCloudInterval = 600;        // in this interval (seconds) the analog data are stored to the cloud
+        static int writeToCloudInterval = 45;      
+
+        static int invalidateIntervalMinutes = 15;      // if analog values ar not actualized in this interval, they are set to invalid (999.9)
+
+        // Set your WiFi Credentials here or store them in the Resources
+        static string wiFiSSID_1 = ResourcesSecret.GetString(ResourcesSecret.StringResources.SSID_1);
+        // static string wiFiSSID_1 = "myWiFiSSID";
+        static string wiFiKey_1 = ResourcesSecret.GetString(ResourcesSecret.StringResources.Key_1);
+        // static string wiFiKey_1 = "mysupersecretWiFiKey";
+
+        // Set your Azure Storage Account Credentials here or store them in the Resources      
+        static string storageAccountName = ResourcesSecret.GetString(ResourcesSecret.StringResources.AzureAccountName);
+        //static string storageAccount = "your Accountname";
+
+        static string storageKey = ResourcesSecret.GetString(ResourcesSecret.StringResources.AzureAccountKey);
+        //static string storageKey = "your key";
+
+        private static bool Azure_useHTTPS = true;
+        //private static bool Azure_useHTTPS = false;
+
+        //****************  End of Settings to be changed by user   ********************************* 
+
+
+        // public static byte[] caAzure = Resources.GetBytes(Resources.BinaryResources.BaltimoreCyberTrustRoot);
+        private static X509Certificate[] caCerts = new X509Certificate[] { new X509Certificate(Resources.GetBytes(Resources.BinaryResources.BaltimoreCyberTrustRoot)) };
+
         
+
+        //static string wiFiSSID_2 = ResourcesSecret.GetString(ResourcesSecret.StringResources.SSID_2);
+        //static string wiFiKey_2 = ResourcesSecret.GetString(ResourcesSecret.StringResources.Key_2);
 
         //DayLightSavingTimeSettings  //not used in this App
         // Europe       
-        private static int dstOffset = 60; // 1 hour (Europe 2016)
-        private static string dstStart = "Mar lastSun @2";
-        private static string dstEnd = "Oct lastSun @3";
+        // private static int dstOffset = 60; // 1 hour (Europe 2016)
+        // private static string dstStart = "Mar lastSun @2";
+        // private static string dstEnd = "Oct lastSun @3";
         /*  USA
         private static int dstOffset = 60; // 1 hour (US 2013)
         private static string dstStart = "Mar Sun>=8"; // 2nd Sunday March (US 2013)
         private static string dstEnd = "Nov Sun>=1"; // 1st Sunday Nov (US 2013)
         */
-        
-        //private static DateTime _timeOfLastSend = DateTime.Now.AddMinutes(-5.0);
 
-        //private static TimeSpan sendInterval = new TimeSpan(0, 10, 0);
-        
-        private static AzureStorageHelper.DebugMode _AzureDebugMode = AzureStorageHelper.DebugMode.StandardDebug;
-        private static AzureStorageHelper.DebugLevel _AzureDebugLevel = AzureStorageHelper.DebugLevel.DebugAll;
-        private static string fiddlerIPAddress = "0.0.0.0";
-        private static bool attachFiddler = false;
-        private static int fiddlerPort = 77;
-      
+        // Attaching fiddler for NETMF (not used in this App for SPWF04SA)
+        // private static string fiddlerIPAddress = "0.0.0.0";
+        // private static bool attachFiddler = false;
+        // private static int fiddlerPort = 77;
+
         private static int AnalogCloudTableYear = 1900;
 
         private static TableClient table;
 
         // Create Datacontainer for values of 4 analog channels, Data invalidate time = 15 min
-        private static DataContainer dataContainer = new DataContainer(new TimeSpan(0, 15, 0));
-
-        
-        // Set the name of the table for analog values (name must be conform to special rules: see Azure)
-
-        private static string analogTableName = "AnalogTestValues";
-
-        private static string analogTablePartPrefix = "Y2_";     // Your choice (name must be conform to special rules: see Azure)
-        private static bool augmentPartitionKey = true;
-
-        static string onOffTablePartPrefix = "Y3_";  // Your choice (name must be conform to special rules: see Azure)
-
-        
-
-        // Set intervals (in seconds)
-
-        static int readInterval = 4;            // in this interval analog sensors are read
-
-        //static int writeToCloudInterval = 600;   // in this interval the analog data are stored to the cloud
-        static int writeToCloudInterval = 45;   // in this interval the analog data are stored to the cloud
-
-        static int OnOffToggleInterval = 420;    // in this interval the On/Off state is toggled (test values)
-
-        //static int invalidateInterval = 900;    // if analog values ar not actualized in this interval, they are set to invalid (999.9)
-
-        //****************  End of Settings to be changed by user   ********************************* 
-
+        private static DataContainer dataContainer = new DataContainer(new TimeSpan(0, invalidateIntervalMinutes, 0));
 
         private static Timer getSensorDataTimer;
         private static Timer writeAnalogToCloudTimer;
         private static Timer readLastAnalogRowTimer;
 
-      
-
-
-
         private static AutoResetEvent waitForWiFiReady = new AutoResetEvent(false);
 
         private static readonly object LockProgram = new object();
-
-        //private static GpioPin led1;
+     
         private static GpioPin OnOffSensor01;
         
-
         //private static SPWF04SxInterface wifi;
         public static SPWF04SxInterfaceRoSchmi  wifi;
        
@@ -127,32 +140,7 @@ namespace AzureDataSender_FEZ
         private static bool dateTimeAndIpAddressAreSet = false;
 
         private static IPAddress ip4Address = IPAddress.Parse("0.0.0.0");
-
-
-        // The Certificate is set directly in the event handlers to save memory on the heap
-        // public static byte[] caAzure = Resources.GetBytes(Resources.BinaryResources.BaltimoreCyberTrustRoot);
-        private static X509Certificate[] caCerts = new X509Certificate[] { new X509Certificate(Resources.GetBytes(Resources.BinaryResources.BaltimoreCyberTrustRoot)) };
-
-        // Set your WiFi Credentials here or store them in the Resources
-        static string wiFiSSID_1 = ResourcesSecret.GetString(ResourcesSecret.StringResources.SSID_1);
-        // static string wiFiSSID_1 = "myWiFiSSID";
-        static string wiFiKey_1 = ResourcesSecret.GetString(ResourcesSecret.StringResources.Key_1);
-        // static string wiFiKey_1 = "mysupersecretWiFiKey";
-
-        //static string wiFiSSID_2 = ResourcesSecret.GetString(ResourcesSecret.StringResources.SSID_2);
-        //static string wiFiKey_2 = ResourcesSecret.GetString(ResourcesSecret.StringResources.Key_2);
-
-        // Set your Azure Storage Account Credentials here or store them in the Resources      
-        static string storageAccountName = ResourcesSecret.GetString(ResourcesSecret.StringResources.AzureAccountName);
-        //static string storageAccount = "your Accountname";
-       
-        static string storageKey = ResourcesSecret.GetString(ResourcesSecret.StringResources.AzureAccountKey);
-        //static string storageKey = "your key";
-
-
-        private static bool Azure_useHTTPS = true;
-        //private static bool Azure_useHTTPS = false;
-
+     
         private static CloudStorageAccount myCloudStorageAccount;      
         private static GpioPin mode;
 
@@ -162,17 +150,29 @@ namespace AzureDataSender_FEZ
         private static AdcChannel analog2 = adc.OpenChannel(FEZ.AdcChannel.A2);
         private static AdcChannel analog3 = adc.OpenChannel(FEZ.AdcChannel.A3);
 
-        // For OnOffSensor01
-        static string OnOffSensor01TableName = "Burnerxy";                //(name must be conform to special rules: see Azure)
+        // For OnOffSensor01        
         static DateTime OnOffSensor01LastSendTime = DateTime.MinValue;
         static TimeSpan OnOffSensor01OnTimeDay = new TimeSpan(0, 0, 0);
         private static int OnOffTable01Year = 1900;
+
+        private static Thread WatchdogResetThread;
+        private static bool watchdogIsActive = false;
+        private static bool lastRebootReason = false;
 
         #endregion
 
         #region Region Main
         static void Main()
-        {                 
+        {
+            lastRebootReason = Watchdog.LastReboot;
+            if (workWithWatchdog)
+            {
+                Watchdog.Start(new TimeSpan(0, 0, 30));
+                Watchdog.Reset();
+                WatchdogResetThread = new Thread(new ThreadStart(watchdogReset));
+                WatchdogResetThread.Start();
+            }
+
             var cont = GpioController.GetDefault();
 
             OnOffSensor01 = cont.OpenPin(FEZ.GpioPin.Btn1);
@@ -234,12 +234,17 @@ namespace AzureDataSender_FEZ
                 DateTime nowDate = new DateTime(int.Parse("20" + theTime.Substring(5, 2) ), int.Parse(theTime.Substring(8, 2)), int.Parse(theTime.Substring(11, 2)), int.Parse(theTime.Substring(21, 2)), int.Parse(theTime.Substring(24, 2)), int.Parse(theTime.Substring(27, 2)));               
                 SystemTime.SetTime(nowDate, timeZoneOffset);
             }
-
             
             wifi.SetConfiguration("ramdisk_memsize", "18");        // Reserve more Ram on SPWF04Sx  (not needed in this App)
+
+            // Tests with changing ntp-refresh time, didn't get it working
+            //wifi.SetConfiguration("ip_ntp_refresh", "30");         // set refresh time
+            string readBack = wifi.GetConfiguration("ip_ntp_refresh");
+            //readBack = wifi.GetConfiguration("console_wind_off_high");
             //wifi.SetConfiguration("ip_ntp_startup", "0");        // switch off ntp client
             //wifi.SaveConfiguration();
-                               
+
+
             wifi.ClearTlsServerRootCertificate();
                   
             #region Region: List of additional commands for file handling  *** only for demonstration  ***
@@ -267,20 +272,21 @@ namespace AzureDataSender_FEZ
             */
             #endregion
 
-
             getSensorDataTimer = new System.Threading.Timer(new TimerCallback(getSensorDataTimer_tick), null, readInterval * 1000, readInterval * 1000);
 
             // start timer to write analog data to the Cloud
             writeAnalogToCloudTimer = new System.Threading.Timer(new TimerCallback(writeAnalogToCloudTimer_tick), null, writeToCloudInterval * 1000, Timeout.Infinite);
-            // is started in writeAnalogToCloudTimer_tick event
+
+            // readLastAnalogRowTimer is started in writeAnalogToCloudTimer_tick event
             readLastAnalogRowTimer = new System.Threading.Timer(new TimerCallback(readLastAnalogRowTimer_tick), null, Timeout.Infinite, Timeout.Infinite);
-            
+
+           // Debug.WriteLine(lastRebootReason ? "RebootReason: Watchdog" : "RebootReason: Power/Reset");
+           
             while (true)
             {
                 Thread.Sleep(100);
             }              
         }
-
         #endregion
 
         #region Timer Event: writeAnalogToCloudTimer_tick  --- Entity with analog values is written to the Cloud
@@ -297,17 +303,20 @@ namespace AzureDataSender_FEZ
                 if (AnalogCloudTableYear != yearOfSend)
                 {
                     Debug.WriteLine("\r\nGoing to create analog Table");
+                    watchdogIsActive = true;
                     resultTableCreate = createTable(myCloudStorageAccount, caCerts, analogTableName + DateTime.Today.Year.ToString());
-                    // Set flag to indicate that table already exists, avoid trying to create again
+                    watchdogIsActive = false;
+                    
                 }
 
                 #endregion
 
                 if ((resultTableCreate == HttpStatusCode.Created) || (resultTableCreate == HttpStatusCode.NoContent) || (resultTableCreate == HttpStatusCode.Conflict))
                 {
+                    // Set flag to indicate that table already exists, avoid trying to create again
                     AnalogCloudTableYear = yearOfSend;
 
-                    writeAnalogToCloudTimer.Change(2 * 1000, writeToCloudInterval * 1000);
+                    writeAnalogToCloudTimer.Change(1 * 1000, writeToCloudInterval * 1000);  // set the timer event to come again in 1 sec.
                 }
                 else
                 {
@@ -347,18 +356,30 @@ namespace AzureDataSender_FEZ
                     string insertEtag = string.Empty;
                     HttpStatusCode insertResult = HttpStatusCode.BadRequest;
 
+                    watchdogIsActive = true;
+
                     insertResult = insertTableEntity(myCloudStorageAccount, caCerts, analogTableName + yearOfSend.ToString(), analogTableEntity, out insertEtag);
 
-                    DateTime nextStart = DateTime.Now.AddSeconds(writeToCloudInterval);
+                    watchdogIsActive = false;
+
+                    DateTime nextRequestStart = DateTime.Now.AddSeconds(writeToCloudInterval);
+                    int requestDuration = 25;
+                   
+                    
+                    DateTime expectedNtpTime = dateTimeNtpServerDelivery.AddMinutes(timeZoneOffset + 60.0);
+                    int preTimespanSec = 10;
+                    int postTimespanSec = 60;
+
                     if ((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict))
                     {
-                        Debug.WriteLine(((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)) ? "Succeded to insert Entity\r\n" : "Failed to insert Entity\r\n"); 
-                        
-                        if ((nextStart > dateTimeNtpServerDelivery.AddHours(1.0).AddSeconds(-10.0)) && nextStart < dateTimeNtpServerDelivery.AddHours(1.0).AddSeconds(20.0))
+                        Debug.WriteLine(((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)) ? "Succeded to insert Entity\r\n" : "Failed to insert Entity\r\n");
+
+                        Debug.WriteLine("nextRequestStart: " + nextRequestStart + " BeginBlankTime: " + expectedNtpTime.AddSeconds(-preTimespanSec - requestDuration) + " EndBlankTime: " + expectedNtpTime.AddSeconds(postTimespanSec));
+                        if ((nextRequestStart > expectedNtpTime.AddSeconds(-preTimespanSec - requestDuration)) && nextRequestStart < expectedNtpTime.AddSeconds(postTimespanSec))
                         {
-                            // delay the next timer event if NtpServerDelivery is expected to fall int the write action
+                            // delay the next timer event if NtpServerDelivery is expected to fall into the write action
                             Debug.WriteLine("Delayed request, possibel Ntp interference");
-                            writeAnalogToCloudTimer.Change((writeToCloudInterval + 10 + 20) * 1000, writeToCloudInterval * 1000);
+                            writeAnalogToCloudTimer.Change(writeToCloudInterval + preTimespanSec + requestDuration + postTimespanSec, writeToCloudInterval * 1000);
                         }
                         else
                         {
@@ -371,12 +392,14 @@ namespace AzureDataSender_FEZ
                     else
                     {
                         Debug.WriteLine(((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)) ? "Succeded to insert Entity\r\n" : "Failed to insert Entity\r\n");
-
-                        if (DateTime.Now < dateTimeNtpServerDelivery.AddHours(1.0).AddSeconds(-10.0))
+                        nextRequestStart = DateTime.Now.AddSeconds(1.0);
+                        // if (DateTime.Now < dateTimeNtpServerDelivery.AddHours(1.0).AddSeconds(-preTimespanSec))
+                        if ((nextRequestStart > expectedNtpTime.AddSeconds(-preTimespanSec - requestDuration)) && nextRequestStart < expectedNtpTime.AddSeconds(postTimespanSec))
                         {
+                                
                             // delay the next timer event if NtpServerDelivery is expected to fall int the write action
                             Debug.WriteLine("Delayed repeated request");
-                            writeAnalogToCloudTimer.Change((10 + 20) * 1000, writeToCloudInterval * 1000);
+                            writeAnalogToCloudTimer.Change((preTimespanSec + requestDuration + postTimespanSec) * 1000, writeToCloudInterval * 1000);
                         }
                         else
                         {
@@ -384,7 +407,7 @@ namespace AzureDataSender_FEZ
                         }
                     }                  
                 }
-            }
+            }           
         }
         #endregion
 
@@ -395,7 +418,13 @@ namespace AzureDataSender_FEZ
             {
                 Debug.WriteLine("Going read back last uploaded entity");
                 ArrayList queryResult = new ArrayList();
+
+                watchdogIsActive = true;
+
                 HttpStatusCode resultQuery = queryTableEntities(myCloudStorageAccount, caCerts, analogTableName + DateTime.Now.Year.ToString(), "$top=1", out queryResult);
+
+                watchdogIsActive = false;
+
                 if (resultQuery == HttpStatusCode.OK)
                 {
                     var entityHashtable = queryResult[0] as Hashtable;
@@ -408,11 +437,7 @@ namespace AzureDataSender_FEZ
                     Debug.WriteLine("Failed to read back last entity from Azure");
                 }
                 // the timer is set to a short time in 'writeAnalogToCloudTimer_tick'
-                readLastAnalogRowTimer.Change(Timeout.Infinite, Timeout.Infinite);
-
-                // wifi.SetConfiguration("ip_ntp_startup", "1");                        
-                // wifi.SaveConfiguration();
-
+                readLastAnalogRowTimer.Change(Timeout.Infinite, Timeout.Infinite);            
             }
         }
         #endregion
@@ -430,53 +455,60 @@ namespace AzureDataSender_FEZ
                 if (OnOffTable01Year != yearOfSend)
                 {
                     Debug.WriteLine("Going to create On/Off Table");
-                    resultTableCreate = createTable(myCloudStorageAccount, caCerts, OnOffSensor01TableName + DateTime.Today.Year.ToString());                  
+
+                    watchdogIsActive = true;
+
+                    resultTableCreate = createTable(myCloudStorageAccount, caCerts, OnOffSensor01TableName + DateTime.Today.Year.ToString());
+
+                    watchdogIsActive = false;
                 }
 
                 if ((resultTableCreate == HttpStatusCode.Created) || (resultTableCreate == HttpStatusCode.NoContent) || (resultTableCreate == HttpStatusCode.Conflict))
                 {
                     OnOffTable01Year = yearOfSend;
                 }
-               
-                string partitionKey = makePartitionKey(onOffTablePartPrefix, augmentPartitionKey);
-
-                DateTime actDate = DateTime.Now;
-                string rowKey = makeRowKey(actDate);
-
-                string sampleTime = actDate.Month.ToString("D2") + "/" + actDate.Day.ToString("D2") + "/" + actDate.Year + " " + actDate.Hour.ToString("D2") + ":" + actDate.Minute.ToString("D2") + ":" + actDate.Second.ToString("D2");
-
-                TimeSpan tflSend = OnOffSensor01LastSendTime == DateTime.MinValue ? new TimeSpan(0) : e.Timestamp - OnOffSensor01LastSendTime;
-
-                OnOffSensor01LastSendTime = e.Timestamp;
-
-                string timeFromLastSendAsString = tflSend.Days.ToString("D3") + "-" + tflSend.Hours.ToString("D2") + ":" + tflSend.Minutes.ToString("D2") + ":" + tflSend.Seconds.ToString("D2");
-
-                OnOffSensor01OnTimeDay = OnOffSensor01.Read() == GpioPinValue.High ? OnOffSensor01OnTimeDay + tflSend : OnOffSensor01OnTimeDay;
-
-                string onTimeDayAsString = OnOffSensor01OnTimeDay.Days.ToString("D3") + "-" + OnOffSensor01OnTimeDay.Hours.ToString("D2") + ":" + OnOffSensor01OnTimeDay.Minutes.ToString("D2") + ":" + OnOffSensor01OnTimeDay.Seconds.ToString("D2");
-
-                ArrayList propertiesAL = OnOffTablePropertiesAL.OnOffPropertiesAL(OnOffSensor01.Read() == GpioPinValue.Low ? "On" : "Off", OnOffSensor01.Read() == GpioPinValue.Low ? "Off" : "On", onTimeDayAsString, sampleTime, timeFromLastSendAsString);
-
-                OnOffTableEntity onOffTableEntity = new OnOffTableEntity(partitionKey, rowKey, propertiesAL);
-
-                HttpStatusCode insertResult = HttpStatusCode.BadRequest;
-
-                while (!((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)))
+                else
                 {
-                    string insertEtag = string.Empty;
-                    string state = OnOffSensor01.Read() == GpioPinValue.Low ? "On" : "Off";
-                    Debug.WriteLine("Going to upload OnOff-Sensor State:" + state);
-                    insertResult = insertTableEntity(myCloudStorageAccount, caCerts, OnOffSensor01TableName + yearOfSend.ToString(), onOffTableEntity, out insertEtag);
+                    string partitionKey = makePartitionKey(onOffTablePartPrefix, augmentPartitionKey);
 
-                    if ((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict))
+                    DateTime actDate = DateTime.Now;
+                    string rowKey = makeRowKey(actDate);
+
+                    string sampleTime = actDate.Month.ToString("D2") + "/" + actDate.Day.ToString("D2") + "/" + actDate.Year + " " + actDate.Hour.ToString("D2") + ":" + actDate.Minute.ToString("D2") + ":" + actDate.Second.ToString("D2");
+
+                    TimeSpan tflSend = OnOffSensor01LastSendTime == DateTime.MinValue ? new TimeSpan(0) : e.Timestamp - OnOffSensor01LastSendTime;
+
+                    OnOffSensor01LastSendTime = e.Timestamp;
+
+                    string timeFromLastSendAsString = tflSend.Days.ToString("D3") + "-" + tflSend.Hours.ToString("D2") + ":" + tflSend.Minutes.ToString("D2") + ":" + tflSend.Seconds.ToString("D2");
+
+                    OnOffSensor01OnTimeDay = OnOffSensor01.Read() == GpioPinValue.High ? OnOffSensor01OnTimeDay + tflSend : OnOffSensor01OnTimeDay;
+
+                    string onTimeDayAsString = OnOffSensor01OnTimeDay.Days.ToString("D3") + "-" + OnOffSensor01OnTimeDay.Hours.ToString("D2") + ":" + OnOffSensor01OnTimeDay.Minutes.ToString("D2") + ":" + OnOffSensor01OnTimeDay.Seconds.ToString("D2");
+
+                    ArrayList propertiesAL = OnOffTablePropertiesAL.OnOffPropertiesAL(OnOffSensor01.Read() == GpioPinValue.Low ? "On" : "Off", OnOffSensor01.Read() == GpioPinValue.Low ? "Off" : "On", onTimeDayAsString, sampleTime, timeFromLastSendAsString);
+
+                    OnOffTableEntity onOffTableEntity = new OnOffTableEntity(partitionKey, rowKey, propertiesAL);
+
+                    HttpStatusCode insertResult = HttpStatusCode.BadRequest;
+
+                    while (!((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)))
                     {
-                        Debug.WriteLine(((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)) ? "Succeded to insert Entity\r\n" : "Failed to insert Entity\r\n");
+                        string insertEtag = string.Empty;
+                        string state = OnOffSensor01.Read() == GpioPinValue.Low ? "On" : "Off";
+                        Debug.WriteLine("Going to upload OnOff-Sensor State:" + state);
+                        insertResult = insertTableEntity(myCloudStorageAccount, caCerts, OnOffSensor01TableName + yearOfSend.ToString(), onOffTableEntity, out insertEtag);
+
+                        if ((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict))
+                        {
+                            Debug.WriteLine(((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)) ? "Succeded to insert Entity\r\n" : "Failed to insert Entity\r\n");
+                        }
+                        else
+                        {
+                            Debug.WriteLine(((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)) ? "Succeded to insert Entity\r\n" : "Failed to insert Entity ****************************************************\r\n");
+                        }
                     }
-                    else
-                    {
-                        Debug.WriteLine(((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)) ? "Succeded to insert Entity\r\n" : "Failed to insert Entity ****************************************************\r\n");
-                    }
-                }               
+                }
             }
         }
 
@@ -494,8 +526,7 @@ namespace AzureDataSender_FEZ
                 dataContainer.SetNewAnalogValue(2, actDateTime, ReadAnalogSensor(1));
                 dataContainer.SetNewAnalogValue(3, actDateTime, ReadAnalogSensor(2));
                 dataContainer.SetNewAnalogValue(4, actDateTime, ReadAnalogSensor(3));
-            }
-          //  getSensorDataTimer.Change(readInterval * 1000, readInterval * 1000);
+            }        
         }
         #endregion
 
@@ -611,7 +642,18 @@ namespace AzureDataSender_FEZ
                        + (23 - actDate.Hour).ToString("D2") + (59 - actDate.Minute).ToString("D2") + (59 - actDate.Second).ToString("D2");
         }
 
+        private static void watchdogReset()
+        {
+            while (true)
+            {
+                Thread.Sleep(5000);
+                if (!watchdogIsActive)
+                {
+                    Watchdog.Reset();
+                }
+            }
 
+        }
 
         /*
         private static int GetDlstOffset(DateTime pDateTime)

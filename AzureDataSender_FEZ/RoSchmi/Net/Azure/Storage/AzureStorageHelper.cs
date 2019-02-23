@@ -183,7 +183,7 @@ namespace RoSchmi.Net.Azure.Storage
             {
                 HttpWebResponse response = null;
                 string _responseHeader_ETag = null;
-                string _responseHeader_Content_MD5 = null;
+                //string _responseHeader_Content_MD5 = null;
                 HttpWebRequest request = null;
                 string SPWF04SxRequest = null;
                 try
@@ -717,16 +717,12 @@ namespace RoSchmi.Net.Azure.Storage
                             {
                                 _Print_Debug(responseBody);
                             }
-
-
                             //var s = sr.ReadToEnd();
                             //lock (theLock1)
                             //{
                             //    _Print_Debug(s);
                             //}
                             //responseBody = s;
-
-
                             return new BasicHttpResponse() { ETag = _responseHeader_ETag, Body = responseBody, StatusCode = responseStatusCode };
                         }
                     }
@@ -814,14 +810,10 @@ namespace RoSchmi.Net.Azure.Storage
                 }
             }
             // RoSchmi
-            requ.Append("\r\nContent-Length: " + contentLength.ToString() +
-                "\r\nConnection: Close\r\nHost: " + url.Host);
-
-            /*
-            requ.Append("\r\n" + "Content-Length: " + contentLength.ToString());
-                    requ.Append("\r\n" + "Connection: " + "Close");
-                    requ.Append("\r\n" + "Host: " + url.Host);
-                    */
+            requ.Append("\r\nContent-Length: " 
+                + contentLength.ToString() 
+                + "\r\nConnection: Close\r\nHost: " 
+                + url.Host);
 
             if (isSocketRequest)
             {

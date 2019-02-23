@@ -83,7 +83,8 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                 Thread.Sleep(500);
             }
             Debug.WriteLine("Scanning finished");          
-            wiFiSPWF04S.JoinNetwork(wiFiSSID, wiFiKey);           
+            wiFiSPWF04S.JoinNetwork(wiFiSSID, wiFiKey);
+           
         }
 
         #region IndicationReceived
