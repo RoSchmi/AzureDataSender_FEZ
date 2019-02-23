@@ -5,6 +5,8 @@ App for GHI Electronics FEZ with SPWF04SA Board writes data to Azure Storage Tab
 
 Data stored (in special format) in Azure Storage Tables can then be visulized with the iOS App Store App: ['Charts4Azure'](https://itunes.apple.com/us/app/charts4azure/id1442910354?mt=8)
 
+For details see this [Page](https://azureiotcharts.home.blog/)
+
 ![gallery](Charts4AzureGitHub.png)
 
 Instructions to a similar project for the Beaglebone Green are provided on Hackster.io:
