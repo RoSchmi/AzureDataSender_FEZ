@@ -17,7 +17,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         private static SPWF04SxInterfaceRoSchmi wiFiSPWF04S;
         //private static ISPWF04SxInterface wiFiSPWF04S;
 
-        private static NetworkInterface networkInterface;
+        // private static NetworkInterface networkInterface;
 
         private string wiFiSSID;
         private string wiFiKey;

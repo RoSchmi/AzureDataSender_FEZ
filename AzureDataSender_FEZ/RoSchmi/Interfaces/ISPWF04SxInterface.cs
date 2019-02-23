@@ -28,12 +28,13 @@ namespace RoSchmi.Interfaces
 {
     public interface ISPWF04SxInterface
     {
-       
+       /*
 
         SpiDevice spi { get; set; }
         GpioPin irq { get; set; }
         GpioPin reset { get; set; }
 
         SpiDevice GetConnectionSettings(SpiChipSelectType spiChipSelectType, int gpioPin);
+        */
     }
 }

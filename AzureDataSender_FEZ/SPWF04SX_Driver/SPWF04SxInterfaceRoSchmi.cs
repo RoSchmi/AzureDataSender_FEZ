@@ -1075,7 +1075,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                             }
                             else
                             {
-                                var dummy4 = 1;
+                                throw new NullReferenceException("Act. Cmd was null");
                             }
                                                                                                                          
                         }

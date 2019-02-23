@@ -54,18 +54,3 @@ namespace AzureDataSender_FEZ
 }
 
 
-
-/*
-
-using System;
-using System.Collections;
-using System.Text;
-using System.Threading;
-
-namespace AzureDataSender_FEZ
-{
-    class OnOffTableEntity
-    {
-    }
-}
-*/
