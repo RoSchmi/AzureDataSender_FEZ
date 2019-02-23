@@ -11,10 +11,16 @@ For details visit this [Page](https://azureiotcharts.home.blog/)
 
 ![gallery](Charts4AzureGitHub.png)
 
+#### How it works:
+
+In this example App the values of 4 analog inputs are periodically read (timer event) and stored in an intermediate 'Container'.
+Periodically (another timer) these data are stored to an Azure Storage Table. Right after loading these data to Azure they are read back to prove that the transmission was successful (this is normally not needed).
+On Pressing or Relasing of BTN1 of the FEZ-Board (between press and release should be enough time to complete the upload of this event) the state of the button is stored in an Azure Storage Table.  
+
 #### Known Issues/Limitations:
 
-Because of the limited Ram of the used MCU (STM32F401) on the GHI Electronics FEZ Board only one Channel for On/Off sensor data is implemented. For the same reason (Out of memory exceptions) actually there are frequent Reboots if the Watchdog is activated.
-Readin back stored data from Azure actually works only unsecure (http).
+Because of the limited Ram of the used MCU (STM32F401) on the GHI Electronics FEZ Board only one Channel for On/Off sensor data is implemented. Loading up On/Off-Sensor-Data (Press and release Btn1) should only occur in a time when no analog data are loaded up.  For the same reason (Out of memory exceptions) actually there are frequent Reboots if the Watchdog is activated.
+Reading back stored data from Azure actually works only unsecure (http).
 
 
 Instructions to a similar project for the Beaglebone Green are provided on Hackster.io:
