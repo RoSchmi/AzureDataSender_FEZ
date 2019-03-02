@@ -5,7 +5,7 @@
 
 // With #define UseTestValues you can select if data are read from sensors or if simulated data (sinus curves) are used
 
-// #define UseTestValues
+#define UseTestValues
 
 #region Using directives
 using System;
