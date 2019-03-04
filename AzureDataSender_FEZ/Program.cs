@@ -206,7 +206,7 @@ namespace AzureDataSender_FEZ
           
             waitForWiFiReady.WaitOne(10000, true);  // ******** Wait 15 sec to scan for wlan devices   ********************
         
-            for (int i = 0; i < 400; i++)    // Wait up to 40 sec for getting IP-Address and time
+            for (int i = 0; i < 500; i++)    // Wait up to 50 sec for getting IP-Address and time
             {
                 Thread.Sleep(100);
                 if (dateTimeAndIpAddressAreSet)
@@ -319,6 +319,8 @@ namespace AzureDataSender_FEZ
                 }
                 else
                 {
+                    wifi.SetConfiguration("console_wind_off_high", "0x100000");
+
                     string partitionKey = makePartitionKey(analogTablePartPrefix, augmentPartitionKey);
 
                     DateTime actDate = DateTime.Now;
@@ -360,49 +362,22 @@ namespace AzureDataSender_FEZ
                     insertResult = insertTableEntity(myCloudStorageAccount, caCerts, analogTableName + yearOfSend.ToString(), analogTableEntity, out insertEtag);
 
                     watchdogIsActive = false;
-
-                    DateTime nextRequestStart = DateTime.Now.AddSeconds(writeToCloudInterval);
-                    int requestDuration = 25;                                     
-                    DateTime expectedNtpTime = dateTimeNtpServerDelivery.AddMinutes(timeZoneOffset + 60.0);
-                    int preTimespanSec = 10;
-                    int postTimespanSec = 60;
-
+                                                                                                                     
                     if ((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict))
                     {
-                        Debug.WriteLine(((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)) ? "Succeeded to insert Entity\r\n" : "Failed to insert Entity\r\n");
-
-                        Debug.WriteLine("Next RequestStart: " + nextRequestStart + " BeginBlankTime: " + expectedNtpTime.AddSeconds(-preTimespanSec - requestDuration) + " EndBlankTime: " + expectedNtpTime.AddSeconds(postTimespanSec));
-                        if ((nextRequestStart > expectedNtpTime.AddSeconds(-preTimespanSec - requestDuration)) && nextRequestStart < expectedNtpTime.AddSeconds(postTimespanSec))
-                        {
-                            // delay the next timer event if NtpServerDelivery is expected to fall into the write action
-                            Debug.WriteLine("Delayed request, possibel Ntp interference");
-                            writeAnalogToCloudTimer.Change(writeToCloudInterval + preTimespanSec + requestDuration + postTimespanSec, writeToCloudInterval * 1000);
-                        }
-                        else
-                        {
-                            writeAnalogToCloudTimer.Change(writeToCloudInterval * 1000, writeToCloudInterval * 1000);
-                        }
+                        Debug.WriteLine("Succeeded to insert Entity\r\n");
+                      
+                        writeAnalogToCloudTimer.Change(writeToCloudInterval * 1000, writeToCloudInterval * 1000);
 
                         // trigger the timer to read the last row
                         readLastAnalogRowTimer.Change(1000, Timeout.Infinite);
                     }
                     else
                     {
-                        Debug.WriteLine(((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)) ? "Succeded to insert Entity\r\n" : "Failed to insert Entity\r\n");
-                        nextRequestStart = DateTime.Now.AddSeconds(1.0);
-                        // if (DateTime.Now < dateTimeNtpServerDelivery.AddHours(1.0).AddSeconds(-preTimespanSec))
-                        if ((nextRequestStart > expectedNtpTime.AddSeconds(-preTimespanSec - requestDuration)) && nextRequestStart < expectedNtpTime.AddSeconds(postTimespanSec))
-                        {
-                                
-                            // delay the next timer event if NtpServerDelivery is expected to fall int the write action
-                            Debug.WriteLine("Delayed repeated request");
-                            writeAnalogToCloudTimer.Change((preTimespanSec + requestDuration + postTimespanSec) * 1000, writeToCloudInterval * 1000);
-                        }
-                        else
-                        {
-                            writeAnalogToCloudTimer.Change(1000, writeToCloudInterval * 1000);
-                        }
-                    }                  
+                        Debug.WriteLine("Failed to insert Entity\r\n");                                              
+                        writeAnalogToCloudTimer.Change(1000, writeToCloudInterval * 1000);
+                    }
+                    wifi.SetConfiguration("console_wind_off_high", "0x000000");
                 }
             }           
         }
@@ -414,6 +389,9 @@ namespace AzureDataSender_FEZ
             lock (LockProgram)
             {
                 Debug.WriteLine("Going to read back last uploaded entity");
+
+                wifi.SetConfiguration("console_wind_off_high", "0x100000");
+
                 ArrayList queryResult = new ArrayList();
 
                 watchdogIsActive = true;
@@ -434,7 +412,8 @@ namespace AzureDataSender_FEZ
                     Debug.WriteLine("Failed to read back last entity from Azure");
                 }
                 // the timer is set to a short time in 'writeAnalogToCloudTimer_tick'
-                readLastAnalogRowTimer.Change(Timeout.Infinite, Timeout.Infinite);            
+                readLastAnalogRowTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                wifi.SetConfiguration("console_wind_off_high", "0x000000");
             }
         }
         #endregion
@@ -496,6 +475,9 @@ namespace AzureDataSender_FEZ
                         Debug.WriteLine("Going to upload OnOff-Sensor State:" + state);
                         insertResult = insertTableEntity(myCloudStorageAccount, caCerts, OnOffSensor01TableName + yearOfSend.ToString(), onOffTableEntity, out insertEtag);
 
+                        Debug.WriteLine(((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)) ? "Succeded to insert Entity\r\n" : "Failed to insert Entity *************\r\n");
+
+                        /*
                         if ((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict))
                         {
                             Debug.WriteLine(((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)) ? "Succeded to insert Entity\r\n" : "Failed to insert Entity\r\n");
@@ -504,6 +486,7 @@ namespace AzureDataSender_FEZ
                         {
                             Debug.WriteLine(((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)) ? "Succeded to insert Entity\r\n" : "Failed to insert Entity ****************************************************\r\n");
                         }
+                        */
                     }
                 }
             }
@@ -582,7 +565,8 @@ namespace AzureDataSender_FEZ
             // Console.WriteLine("Value returned");
             //return 1.0;
             //return Math.Round(2.5f * (double)Math.Sin(Math.PI / 2.0 + (secondsOnDayElapsed * ((frequDeterminer * Math.PI) / (double)86400))), 1) + y_offset;
-            return Math.Round(2.5f * (double)Math.Sin(Math.PI / 2.0 + (secondsOnDayElapsed * ((frequDeterminer * Math.PI) / (double)86400)))) + y_offset;
+            return Math.Round(25f * (double)Math.Sin(Math.PI / 2.0 + (secondsOnDayElapsed * ((frequDeterminer * Math.PI) / (double)86400)))) / 10  + y_offset;
+           
 #endif
         }
         #endregion

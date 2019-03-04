@@ -366,8 +366,39 @@ namespace RoSchmi.Net.Azure.Storage
                                 // Debug.WriteLine("Going to open socket");                               
                                 totalMemory = GC.GetTotalMemory(true);
 
-                                id = wifi.OpenSocket(url.Host, port, SPWF04SxConnectionType.Tcp, securityType);
+                              //  id = wifi.OpenSocket(url.Host, port, SPWF04SxConnectionType.Tcp, securityType);
 
+                              //  id = wifi.OpenSocket(url.Host, port, SPWF04SxConnectionType.Tcp, securityType);
+
+                                string[] sockets = wifi.ListSocket().Split('\n');
+
+                                while (sockets.Length > 1)      // If unexpected sockets are there, read and discard content and close
+                                {
+                                    Debug.WriteLine("UnExpSockets: " + sockets.Length.ToString());
+                                    if (sockets[0].IndexOf("List::") == 0)
+                                    {
+                                        int total_1 = 0;
+                                        bool first_1 = true;
+                                        int read_1 = buffer.Length;
+                                        int tiCtr = 0;
+
+                                        while (((wifi.QuerySocket(int.Parse(sockets[0].Substring(6, 1))) is var avail && avail > 0) || first_1 || total_1 < 120) && (tiCtr < 10))
+                                        {
+                                            if (avail > 0)
+                                            {
+                                                first_1 = false;
+                                                read_1 = wifi.ReadSocket(id, buffer, 0, Math.Min(avail, buffer.Length));                           
+                                            }
+                                            Thread.Sleep(100);
+                                            tiCtr++;
+                                        }
+                                        wifi.CloseSocket(int.Parse(sockets[0].Substring(6, 1)));
+                                    }
+                                    sockets = wifi.ListSocket().Split('\n');
+                                }
+
+                                id = wifi.OpenSocket(url.Host, port, SPWF04SxConnectionType.Tcp, securityType);
+                                                             
                                 if (socketTimeCtr > 0)
                                 {
                                     Debug.WriteLine("Failed to open socket one time");
@@ -408,9 +439,8 @@ namespace RoSchmi.Net.Azure.Storage
                             }
                         } while (!SocketDataPending && timeCtr < loopLimit);    // if there were no data for loopLimit retries, we go on 
 
-                        var total = 0;
-
-                        var first = true;
+                        int total = 0;
+                        bool first = true;
 
                         byte[] totalBuf = new byte[0];
                         byte[] lastBuf = new byte[0];
@@ -428,7 +458,7 @@ namespace RoSchmi.Net.Azure.Storage
                                 first = false;
                                 read = wifi.ReadSocket(id, buffer, 0, Math.Min(avail, buffer.Length));
                                 total += read;
-                                //Debugger.Log(0, "", Encoding.UTF8.GetString(buffer, 0, read));
+                                // Debugger.Log(0, "", Encoding.UTF8.GetString(buffer, 0, read));
                                 lastBuf = totalBuf;
                                 offset = lastBuf.Length;
                                 totalBuf = new byte[offset + read];

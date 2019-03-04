@@ -1,10 +1,9 @@
-﻿using System;
+﻿// Code from: kodfilemon.blogspot.com/
+using System;
 using System.Collections;
 using System.Text;
 using System.Threading;
 using System.Runtime.InteropServices;
-
-
 
 namespace AzureDataSender_FEZ
 {
