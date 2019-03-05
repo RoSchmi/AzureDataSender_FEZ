@@ -1,5 +1,5 @@
 # AzureDataSender_FEZ
-This is work in progress. It works now (23.02.2019) quite stable but isn't tested over longer periods.
+This is work in progress. Vers. 1.0.1 (06.03.2019) runs with activated watchdog over many hours.
 
 App for [GHI Electronics FEZ](https://ghielectronics.com/products/fez) with SPWF04SA Board writes data to Azure Storage Tables to be visualized by Microsoft Azure Storage Explorer or the iOS App ['AzureTabStorClient'](https://itunes.apple.com/us/app/azuretabstorclient/id1399683806). (For details visit this [Page](https://azuretabstorclient.wordpress.com/))
 
