@@ -1,5 +1,5 @@
 ﻿// Copyright RoSchmi 2019 License Apache 2.0
-// Version 1.0.0 23.02.2019
+// Version 1.0.1 06.03.2019
 // App to write sensor data to Azure Storage Table service
 // For TinyCLR Board FEZ with SPWF04Sx Wifi module
 
@@ -49,7 +49,7 @@ namespace AzureDataSender_FEZ
              
         private static int timeZoneOffset = 60;      // Berlin offest in minutes of your timezone to Greenwich Mean Time (GMT) 
 
-        private static bool workWithWatchdog = false;    // with watchdog activated OutOfMemory exceptions are thrown, test if watchdog works for you
+        private static bool workWithWatchdog = true;    // with watchdog activated OutOfMemory exceptions are thrown, test if watchdog works for you
 
         // Set the name of the table for analog values (name must be conform to special rules: see Azure)
         private static string analogTableName = "AnalogTestValues";
@@ -274,7 +274,7 @@ namespace AzureDataSender_FEZ
             getSensorDataTimer = new System.Threading.Timer(new TimerCallback(getSensorDataTimer_tick), null, readInterval * 1000, readInterval * 1000);
 
             // start timer to write analog data to the Cloud
-            writeAnalogToCloudTimer = new System.Threading.Timer(new TimerCallback(writeAnalogToCloudTimer_tick), null, writeToCloudInterval * 1000, Timeout.Infinite);
+            writeAnalogToCloudTimer = new System.Threading.Timer(new TimerCallback(writeAnalogToCloudTimer_tick), null, 5 * 1000, Timeout.Infinite);
 
             // readLastAnalogRowTimer is started in writeAnalogToCloudTimer_tick event
             readLastAnalogRowTimer = new System.Threading.Timer(new TimerCallback(readLastAnalogRowTimer_tick), null, Timeout.Infinite, Timeout.Infinite);
@@ -304,8 +304,7 @@ namespace AzureDataSender_FEZ
                     Debug.WriteLine("\r\nGoing to create analog Table");
                     watchdogIsActive = true;
                     resultTableCreate = createTable(myCloudStorageAccount, caCerts, analogTableName + DateTime.Today.Year.ToString());
-                    watchdogIsActive = false;
-                    
+                    watchdogIsActive = false;                   
                 }
 
                 #endregion
@@ -319,7 +318,7 @@ namespace AzureDataSender_FEZ
                 }
                 else
                 {
-                    wifi.SetConfiguration("console_wind_off_high", "0x100000");
+                    wifi.SetConfiguration("console_wind_off_high", "0x100000");    // mask WIND NtpServerDelivery 
 
                     string partitionKey = makePartitionKey(analogTablePartPrefix, augmentPartitionKey);
 
@@ -377,7 +376,7 @@ namespace AzureDataSender_FEZ
                         Debug.WriteLine("Failed to insert Entity\r\n");                                              
                         writeAnalogToCloudTimer.Change(1000, writeToCloudInterval * 1000);
                     }
-                    wifi.SetConfiguration("console_wind_off_high", "0x000000");
+                    wifi.SetConfiguration("console_wind_off_high", "0x000000");   // unmask WIND NtpServerDelivery 
                 }
             }           
         }
@@ -390,7 +389,7 @@ namespace AzureDataSender_FEZ
             {
                 Debug.WriteLine("Going to read back last uploaded entity");
 
-                wifi.SetConfiguration("console_wind_off_high", "0x100000");
+                wifi.SetConfiguration("console_wind_off_high", "0x100000");      // mask WIND NtpServerDelivery 
 
                 ArrayList queryResult = new ArrayList();
 
@@ -413,7 +412,8 @@ namespace AzureDataSender_FEZ
                 }
                 // the timer is set to a short time in 'writeAnalogToCloudTimer_tick'
                 readLastAnalogRowTimer.Change(Timeout.Infinite, Timeout.Infinite);
-                wifi.SetConfiguration("console_wind_off_high", "0x000000");
+
+                wifi.SetConfiguration("console_wind_off_high", "0x000000");     // unmask WIND NtpServerDelivery 
             }
         }
         #endregion
@@ -475,18 +475,7 @@ namespace AzureDataSender_FEZ
                         Debug.WriteLine("Going to upload OnOff-Sensor State:" + state);
                         insertResult = insertTableEntity(myCloudStorageAccount, caCerts, OnOffSensor01TableName + yearOfSend.ToString(), onOffTableEntity, out insertEtag);
 
-                        Debug.WriteLine(((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)) ? "Succeded to insert Entity\r\n" : "Failed to insert Entity *************\r\n");
-
-                        /*
-                        if ((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict))
-                        {
-                            Debug.WriteLine(((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)) ? "Succeded to insert Entity\r\n" : "Failed to insert Entity\r\n");
-                        }
-                        else
-                        {
-                            Debug.WriteLine(((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)) ? "Succeded to insert Entity\r\n" : "Failed to insert Entity ****************************************************\r\n");
-                        }
-                        */
+                        Debug.WriteLine(((insertResult == HttpStatusCode.NoContent) || (insertResult == HttpStatusCode.Conflict)) ? "Succeded to insert Entity\r\n" : "Failed to insert Entity *************\r\n");                        
                     }
                 }
             }
@@ -543,7 +532,6 @@ namespace AzureDataSender_FEZ
                     break;                          
             }
             
-
             return theRead * 10.0;
 
 #else
@@ -562,11 +550,8 @@ namespace AzureDataSender_FEZ
             { frequDeterminer = 16; y_offset = 30; }
 
             int secondsOnDayElapsed = DateTime.Now.Second + DateTime.Now.Minute * 60 + DateTime.Now.Hour * 60 * 60;
-            // Console.WriteLine("Value returned");
-            //return 1.0;
-            //return Math.Round(2.5f * (double)Math.Sin(Math.PI / 2.0 + (secondsOnDayElapsed * ((frequDeterminer * Math.PI) / (double)86400))), 1) + y_offset;
-            return Math.Round(25f * (double)Math.Sin(Math.PI / 2.0 + (secondsOnDayElapsed * ((frequDeterminer * Math.PI) / (double)86400)))) / 10  + y_offset;
-           
+            
+            return Math.Round(25f * (double)Math.Sin(Math.PI / 2.0 + (secondsOnDayElapsed * ((frequDeterminer * Math.PI) / (double)86400)))) / 10  + y_offset;          
 #endif
         }
         #endregion

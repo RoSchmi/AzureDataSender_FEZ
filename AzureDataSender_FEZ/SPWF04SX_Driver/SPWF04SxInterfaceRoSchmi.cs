@@ -602,6 +602,35 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             return result.Split(':') is var parts && parts[0] == "Http Server Status Code" ? int.Parse(parts[1]) : throw new Exception($"Request failed: {result}");
         }
 
+        public string SendPing(string hostname, string counter = "1", string size = "56")
+        {        
+            var cmd = this.GetCommand()
+            .AddParameter(counter)
+            .AddParameter(size)
+            .AddParameter(hostname)           
+            .Finalize(SPWF04SxCommandIds.PING);
+
+            this.EnqueueCommand(cmd);
+           
+            byte[] totalBuf = new byte[0];
+            byte[] lastBuf = new byte[0];
+            int offset = 0;
+            byte[] readBuf = new byte[50];
+            int len = readBuf.Length;
+            while (len > 0)
+            {
+                len = cmd.ReadBuffer(readBuf, 0, len);
+                lastBuf = totalBuf;
+                offset = lastBuf.Length;
+                totalBuf = new byte[offset + len];
+                Array.Copy(lastBuf, 0, totalBuf, 0, offset);
+                Array.Copy(readBuf, 0, totalBuf, offset, len);
+                readBuf = new byte[len];
+                Thread.Sleep(1000);
+            }           
+            this.FinishCommand(cmd);
+            return Encoding.UTF8.GetString(totalBuf);               
+        }
 
         //*************************************** End added by RoSchmi  ***************************************************
 
@@ -737,7 +766,6 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             Debug.WriteLine("Socket:" + a + " " + b);
             //return a.Split(':') is var result && result[0] == "On" ? int.Parse(result[2]) : throw new Exception("Request failed");
             return a.Split(':') is var result && result[0] == "On" ? int.Parse(result[2]) : - 1;
-
         }
 
         public void CloseSocket(int socket)

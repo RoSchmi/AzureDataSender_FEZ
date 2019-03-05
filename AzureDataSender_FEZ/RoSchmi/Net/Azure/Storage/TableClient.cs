@@ -556,7 +556,7 @@ namespace RoSchmi.Net.Azure.Storage
             string prop = string.Empty;
             string key = string.Empty;
             for (int i = 0; i < tableEntityProperties.Count; i++)
-            {
+            {                
                 //key = ((string[])tableEntityProperties[i])[1];
                 //if ((key != "PartitionKey") && (key != "RowKey"))   // Skip PartitionKey and RowKey
                 //{ 

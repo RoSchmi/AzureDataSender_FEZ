@@ -358,17 +358,13 @@ namespace RoSchmi.Net.Azure.Storage
                         {                           
                             totalMemory = GC.GetTotalMemory(true);
                             
-                            #region try 1.5 second repeatedly to open socket (10 times)
+                            #region try 1.5 second repeatedly to open socket (15 times)
                             id = -1;
                             int socketTimeCtr = 0;
                             while ((id == -1) && (socketTimeCtr < 15))
                             {
                                 // Debug.WriteLine("Going to open socket");                               
                                 totalMemory = GC.GetTotalMemory(true);
-
-                              //  id = wifi.OpenSocket(url.Host, port, SPWF04SxConnectionType.Tcp, securityType);
-
-                              //  id = wifi.OpenSocket(url.Host, port, SPWF04SxConnectionType.Tcp, securityType);
 
                                 string[] sockets = wifi.ListSocket().Split('\n');
 
@@ -396,6 +392,8 @@ namespace RoSchmi.Net.Azure.Storage
                                     }
                                     sockets = wifi.ListSocket().Split('\n');
                                 }
+                                
+                                Watchdog.Reset();
 
                                 id = wifi.OpenSocket(url.Host, port, SPWF04SxConnectionType.Tcp, securityType);
                                                              
@@ -417,10 +415,14 @@ namespace RoSchmi.Net.Azure.Storage
                             // Debug.WriteLine("Succeeded to open socket on try: " + socketTimeCtr.ToString());
 
                             totalMemory = GC.GetTotalMemory(true);
-                          
-                            SocketDataPending = false;
-                            
+
+                            // string[] socks = wifi.ListSocket().Split('\n');
+                            // string[] sock =  socks[0].Split(':');
+
+                            Watchdog.Reset();
+                            SocketDataPending = false;                            
                             wifi.WriteSocket(id, requestBinary);
+
                             if (httpVerb == "POST")
                             {
                                 wifi.WriteSocket(id, payload);
