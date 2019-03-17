@@ -1056,7 +1056,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                                     }
                                     break;
 
-                                case 0x4A:   // dec 77: Failed to open socket  
+                                case 0x4A:   // dec 74: Failed to open socket  
                                     {
                                         SocketErrorHappened = true;
                                         Debug.WriteLine("Ind: " + ind.ToString("X2") + " Failed to open socket " + " Pld = " + payloadLength.ToString());                                       

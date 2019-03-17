@@ -167,10 +167,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                     }
                     break;
                 default:
-                    {
-
-
-                    }
+                    { }
                     break;
             }
         }
