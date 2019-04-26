@@ -45,7 +45,9 @@ namespace RoSchmi.Net.Azure.Storage
         private static IPAddress _fiddlerIP = null;
         private static int _fiddlerPort = 8888;
 
-        private static SPWF04SxInterfaceRoSchmi wifi;
+        //private static SPWF04SxInterfaceRoSchmi wifi;
+        private static SPWF04SxInterface wifi;
+
         private static X509Certificate[] caCerts;
 
         public static bool SocketWasClosed
@@ -165,7 +167,8 @@ namespace RoSchmi.Net.Azure.Storage
             }
         }
       
-        public static BasicHttpResponse SendWebRequest(SPWF04SxInterfaceRoSchmi spwf04sx, X509Certificate[] certificates, Uri url, string authHeader, string dateHeader, string versionHeader, byte[] payload = null, int contentLength = 0, string httpVerb = "GET", bool expect100Continue = false, string acceptType = "application/json;odata=minimalmetadata", Hashtable additionalHeaders = null)
+        //public static BasicHttpResponse SendWebRequest(SPWF04SxInterfaceRoSchmi spwf04sx, X509Certificate[] certificates, Uri url, string authHeader, string dateHeader, string versionHeader, byte[] payload = null, int contentLength = 0, string httpVerb = "GET", bool expect100Continue = false, string acceptType = "application/json;odata=minimalmetadata", Hashtable additionalHeaders = null)
+        public static BasicHttpResponse SendWebRequest(SPWF04SxInterface spwf04sx, X509Certificate[] certificates, Uri url, string authHeader, string dateHeader, string versionHeader, byte[] payload = null, int contentLength = 0, string httpVerb = "GET", bool expect100Continue = false, string acceptType = "application/json;odata=minimalmetadata", Hashtable additionalHeaders = null)
         {
             caCerts = certificates;
             wifi = spwf04sx;
@@ -366,7 +369,7 @@ namespace RoSchmi.Net.Azure.Storage
                                 // Debug.WriteLine("Going to open socket");                               
                                 totalMemory = GC.GetTotalMemory(true);
 
-                                string[] sockets = wifi.ListSocket().Split('\n');
+                                string[] sockets = wifi.ListSockets().Split('\n');
 
                                 while (sockets.Length > 1)      // If unexpected sockets are there, read and discard content and close
                                 {
@@ -390,7 +393,7 @@ namespace RoSchmi.Net.Azure.Storage
                                         }
                                         wifi.CloseSocket(int.Parse(sockets[0].Substring(6, 1)));
                                     }
-                                    sockets = wifi.ListSocket().Split('\n');
+                                    sockets = wifi.ListSockets().Split('\n');
                                 }
                                 
                                 Watchdog.Reset();

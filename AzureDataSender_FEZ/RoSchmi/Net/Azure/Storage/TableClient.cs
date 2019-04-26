@@ -17,8 +17,10 @@ using PervasiveDigital.Utilities;
 using PervasiveDigital.Security.ManagedProviders;
 using System.Security.Cryptography.X509Certificates;
 using System.Diagnostics;
-using RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx;
+//using RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx;
+using GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx;
 using AzureDataSender_FEZ;
+
 
 
 
@@ -37,7 +39,9 @@ namespace RoSchmi.Net.Azure.Storage
         private IPAddress _fiddlerIP = null;
         private int _fiddlerPort = 8888;
 
-        private SPWF04SxInterfaceRoSchmi wifi;
+        //private SPWF04SxInterfaceRoSchmi wifi;
+        
+        private SPWF04SxInterface wifi;
 
         #region "Debugging"
         private AzureStorageHelper.DebugMode _debug = AzureStorageHelper.DebugMode.StandardDebug;
@@ -148,7 +152,8 @@ namespace RoSchmi.Net.Azure.Storage
         }
 
         #region Constructor
-        public TableClient(CloudStorageAccount account, X509Certificate[] pCertificat, AzureStorageHelper.DebugMode pDebugMode, AzureStorageHelper.DebugLevel pDebugLevel, SPWF04SxInterfaceRoSchmi pSPWF04Sx = null)
+        //public TableClient(CloudStorageAccount account, X509Certificate[] pCertificat, AzureStorageHelper.DebugMode pDebugMode, AzureStorageHelper.DebugLevel pDebugLevel, SPWF04SxInterfaceRoSchmi pSPWF04Sx = null)
+        public TableClient(CloudStorageAccount account, X509Certificate[] pCertificat, AzureStorageHelper.DebugMode pDebugMode, AzureStorageHelper.DebugLevel pDebugLevel, SPWF04SxInterface pSPWF04Sx = null)
         {
             wifi = pSPWF04Sx;
             _account = account;
