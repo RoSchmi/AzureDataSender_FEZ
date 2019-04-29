@@ -15,7 +15,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
     class WiFi_SPWF04S_Mgr
     {
         //private static SPWF04SxInterfaceRoSchmi wiFiSPWF04S;
-        private static SPWF04SxInterface wiFiSPWF04S;
+        private static SPWF04SxInterfaceExtension wiFiSPWF04S;
 
 
         //private static ISPWF04SxInterface wiFiSPWF04S;
@@ -36,7 +36,10 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
         //public WiFi_SPWF04S_Mgr(SPWF04SxInterfaceRoSchmi pWiFiSPWF04S, string pWifiSSID, string pWifiKey)
 
-        public WiFi_SPWF04S_Mgr(SPWF04SxInterface pWiFiSPWF04S, string pWifiSSID, string pWifiKey)
+        //public WiFi_SPWF04S_Mgr(SPWF04SxInterface pWiFiSPWF04S, string pWifiSSID, string pWifiKey)
+
+        public WiFi_SPWF04S_Mgr(SPWF04SxInterfaceExtension pWiFiSPWF04S, string pWifiSSID, string pWifiKey)
+
 
         {
             wiFiSPWF04S = pWiFiSPWF04S;

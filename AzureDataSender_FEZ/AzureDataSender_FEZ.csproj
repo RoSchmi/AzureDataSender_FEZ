@@ -81,6 +81,7 @@
     <Compile Include="SPWF04SX_Driver\SPWF04SxEvents.cs" />
     <Compile Include="SPWF04SX_Driver\SPWF04SxExceptions.cs" />
     <Compile Include="SPWF04SX_Driver\SPWF04SxInterface.cs" />
+    <Compile Include="SPWF04SX_Driver\SPWF04SxInterfaceExtension.cs" />
     <Compile Include="SPWF04SX_Driver\SPWF04SxInterfaceRoSchmi.cs" />
     <Compile Include="Watchdog.cs" />
   </ItemGroup>

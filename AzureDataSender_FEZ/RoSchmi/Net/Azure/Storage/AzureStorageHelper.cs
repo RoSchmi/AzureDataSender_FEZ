@@ -369,7 +369,7 @@ namespace RoSchmi.Net.Azure.Storage
                                 // Debug.WriteLine("Going to open socket");                               
                                 totalMemory = GC.GetTotalMemory(true);
 
-                                string[] sockets = wifi.ListSockets().Split('\n');
+                                string[] sockets = getSockets();
 
                                 while (sockets.Length > 1)      // If unexpected sockets are there, read and discard content and close
                                 {
@@ -393,7 +393,7 @@ namespace RoSchmi.Net.Azure.Storage
                                         }
                                         wifi.CloseSocket(int.Parse(sockets[0].Substring(6, 1)));
                                     }
-                                    sockets = wifi.ListSockets().Split('\n');
+                                    sockets = getSockets();                                                                
                                 }
                                 
                                 Watchdog.Reset();
@@ -804,6 +804,29 @@ namespace RoSchmi.Net.Azure.Storage
             Debug.WriteLine(Encoding.UTF8.GetString(buffer, start, count));
         }
 
+        private static string[] getSockets()
+        {
+            byte[] buffer = new byte[50];
+            wifi.ListSockets();
+            int sockRead = buffer.Length;
+            int sockOffset = 0;
+            int sockTotal = 0;
+            byte[] sockLastBuf = new byte[0];
+            byte[] sockTotalBuf = new byte[0];
+
+            while (sockRead > 0)
+            {
+                sockRead = wifi.ReadResponseBody(buffer, 0, buffer.Length);
+                sockTotal += sockRead;
+                sockOffset = sockLastBuf.Length;
+                sockTotalBuf = new byte[sockOffset + sockRead];
+                Array.Copy(sockLastBuf, 0, sockTotalBuf, 0, sockOffset);
+                Array.Copy(buffer, 0, sockTotalBuf, sockOffset, sockRead);
+            }
+            string resultString = Encoding.UTF8.GetString(sockTotalBuf);
+
+            return resultString.Split('\n');
+        }
 
         private static string PrepareSPWF04SxRequest(Uri url, string authHeader, string dateHeader, string versionHeader, byte[] fileBytes, int contentLength, string httpVerb, bool isSocketRequest, bool expect100Continue = false, string acceptType = "application/json;odata=minimalmetadata", Hashtable additionalHeaders = null)
         {

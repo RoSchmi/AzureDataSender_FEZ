@@ -49,7 +49,7 @@ namespace AzureDataSender_FEZ
              
         private static int timeZoneOffset = 60;      // Berlin offest in minutes of your timezone to Greenwich Mean Time (GMT) 
 
-        private static bool workWithWatchdog = false;    // with watchdog activated OutOfMemory exceptions are thrown, test if watchdog works for you
+        private static bool workWithWatchdog = true;    // with watchdog activated OutOfMemory exceptions are thrown, test if watchdog works for you
 
         // Set the name of the table for analog values (name must be conform to special rules: see Azure)
         private static string analogTableName = "AnalogTestValues";
@@ -131,7 +131,10 @@ namespace AzureDataSender_FEZ
         private static GpioPin OnOffSensor01;
 
         // RoSchmi: must be tested
-        public static SPWF04SxInterface wifi;
+        //public static SPWF04SxInterface wifi;
+
+        public static SPWF04SxInterfaceExtension wifi;
+
         //public static SPWF04SxInterface wifi;
         //private static SPWF04SxInterface wifi;
         //public static SPWF04SxInterfaceRoSchmi  wifi;
@@ -195,7 +198,8 @@ namespace AzureDataSender_FEZ
             var spi = scont.GetDevice(SPWF04SxInterface.GetConnectionSettings(SpiChipSelectType.Gpio, FEZ.GpioPin.WiFiChipSelect));
 
             //wifi = new SPWF04SxInterfaceRoSchmi(spi, irq, reset);
-            wifi = new SPWF04SxInterface(spi, irq, reset);
+            //wifi = new SPWF04SxInterface(spi, irq, reset);
+            wifi = new SPWF04SxInterfaceExtension(spi, irq, reset);
 
 
             wiFi_SPWF04S_Mgr = new WiFi_SPWF04S_Mgr(wifi, wiFiSSID_1, wiFiKey_1);
