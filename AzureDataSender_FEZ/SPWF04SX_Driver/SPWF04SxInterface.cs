@@ -11,25 +11,26 @@ using GHIElectronics.TinyCLR.Devices.Gpio;
 using GHIElectronics.TinyCLR.Devices.Spi;
 using GHIElectronics.TinyCLR.Net.NetworkInterface;
 using GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx.Helpers;
+//Added by RoSchmi
+using System.Diagnostics;
 
 namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 {
-    /*
     public class SPWF04SxInterface : NetworkInterface, ISocketProvider, ISslStreamProvider, IDnsProvider, IDisposable
     {
-        
         private readonly ObjectPool commandPool;
         private readonly Hashtable netifSockets;
         private readonly Queue pendingCommands;
         private readonly ReadWriteBuffer readPayloadBuffer;
         private readonly SpiDevice spi;
         private readonly GpioPin irq;
-        private readonly GpioPin reset;
+        private readonly GpioPin reset;     
         private SPWF04SxCommand activeCommand;
-        private SPWF04SxCommand activeHttpCommand;
+        private SPWF04SxCommand activeVariableLengthResponseCommand;
         private Thread worker;
         private bool running;
         private int nextSocketId;
+        private bool SocketErrorHappened;
 
         public event SPWF04SxIndicationReceivedEventHandler IndicationReceived;
         public event SPWF04SxErrorReceivedEventHandler ErrorReceived;
@@ -38,6 +39,7 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         public bool ForceSocketsTls { get; set; }
         public string ForceSocketsTlsCommonName { get; set; }
 
+ 
         public static SpiConnectionSettings GetConnectionSettings(SpiChipSelectType chipSelectType, int chipSelectLine) => new SpiConnectionSettings
         {
             ClockFrequency = 8000000,
@@ -67,6 +69,8 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
             NetworkInterface.RegisterNetworkInterface(this);
         }
+
+       
 
         ~SPWF04SxInterface() => this.Dispose(false);
 
@@ -118,12 +122,19 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             this.netifSockets.Clear();
             this.nextSocketId = 0;
             this.activeCommand = null;
-            this.activeHttpCommand = null;
+            this.activeVariableLengthResponseCommand = null;
 
             this.commandPool.ResetAll();
         }
 
         protected SPWF04SxCommand GetCommand() => (SPWF04SxCommand)this.commandPool.Acquire();
+
+        protected SPWF04SxCommand GetVariableLengthResponseCommand()
+        {
+            if (this.activeVariableLengthResponseCommand != null) throw new InvalidOperationException("Variable length response command already outstanding.");
+
+            return this.activeVariableLengthResponseCommand = this.GetCommand();
+        }
 
         protected void EnqueueCommand(SPWF04SxCommand cmd)
         {
@@ -166,15 +177,6 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             }
         }
 
-        public void ResetConfiguration()
-        {
-            var cmd = this.GetCommand()
-                .Finalize(SPWF04SxCommandIds.FCFG);
-            this.EnqueueCommand(cmd);
-            cmd.ReadBuffer();
-            this.FinishCommand(cmd);
-        }
-
         public void ClearTlsServerRootCertificate()
         {
             var cmd = this.GetCommand()
@@ -209,75 +211,268 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             return result.Substring(result.IndexOf(':') + 1);
         }
 
-        public int SendHttpGet(string host, string path, int port, SPWF04SxConnectionSecurityType connectionSecurity)
+        public string GetConfigurationVariable(string variable)
         {
-            if (this.activeHttpCommand != null) throw new InvalidOperationException();
+            var cmd = this.GetCommand()
+                .AddParameter(variable)
+                .Finalize(SPWF04SxCommandIds.GCFG);
 
-            this.activeHttpCommand = this.GetCommand()
+            this.EnqueueCommand(cmd);
+
+            var result = cmd.ReadString();
+
+            cmd.ReadBuffer();
+
+            this.FinishCommand(cmd);
+
+            return result;
+        }
+
+        public void SetConfigurationVariable(string variable, string value)
+        {
+            var cmd = this.GetCommand()
+                .AddParameter(variable)
+                .AddParameter(value)
+                .Finalize(SPWF04SxCommandIds.SCFG);
+
+            this.EnqueueCommand(cmd);
+
+            cmd.ReadBuffer();
+
+            this.FinishCommand(cmd);
+        }
+
+        public void SaveConfiguration()
+        {
+            var cmd = this.GetCommand()
+                .Finalize(SPWF04SxCommandIds.WCFG);
+
+            this.EnqueueCommand(cmd);
+
+            cmd.ReadBuffer();
+
+            this.FinishCommand(cmd);
+        }
+
+        public void ResetConfiguration()
+        {
+            var cmd = this.GetCommand()
+                .Finalize(SPWF04SxCommandIds.FCFG);
+            this.EnqueueCommand(cmd);
+            cmd.ReadBuffer();
+            this.FinishCommand(cmd);
+        }
+
+        public string GetTime()
+        {
+            var cmd = this.GetCommand()
+                .Finalize(SPWF04SxCommandIds.TIME);
+
+            this.EnqueueCommand(cmd);
+
+            var a = cmd.ReadString();
+            var b = cmd.ReadString();
+
+            cmd.ReadBuffer();
+
+            this.FinishCommand(cmd);
+
+            return $"{a} {b}";
+        }
+
+        public string ComputeFileHash(SPWF04SxHashType hashType, string filename)
+        {
+            var cmd = this.GetCommand()
+                .AddParameter(hashType == SPWF04SxHashType.Md5 ? "3" : hashType == SPWF04SxHashType.Sha256 ? "2" : hashType == SPWF04SxHashType.Sha224 ? "1" : "0")
+                .AddParameter(filename)
+                .Finalize(SPWF04SxCommandIds.HASH);
+
+            this.EnqueueCommand(cmd);
+
+            var result = cmd.ReadString();
+
+            cmd.ReadBuffer();
+
+            this.FinishCommand(cmd);
+
+            return result;
+        }
+
+        public void MountVolume(SPWF04SxVolume volume)
+        {
+            var cmd = this.GetCommand()
+                .AddParameter(volume == SPWF04SxVolume.ApplicationFlash ? "3" : volume == SPWF04SxVolume.Ram ? "2" : volume == SPWF04SxVolume.UserFlash ? "1" : "0")
+                .Finalize(SPWF04SxCommandIds.FSM);
+
+            this.EnqueueCommand(cmd);
+
+            cmd.ReadBuffer();
+
+            this.FinishCommand(cmd);
+        }
+
+        public void UnmountVolume(SPWF04SxVolume volume)
+        {
+            var cmd = this.GetCommand()
+                .AddParameter(volume == SPWF04SxVolume.ApplicationFlash ? "3" : volume == SPWF04SxVolume.Ram ? "2" : volume == SPWF04SxVolume.UserFlash ? "1" : "0")
+                .AddParameter("0")
+                .Finalize(SPWF04SxCommandIds.FSU);
+
+            this.EnqueueCommand(cmd);
+
+            cmd.ReadBuffer();
+
+            this.FinishCommand(cmd);
+        }
+
+        public void GetFileListing()
+        {
+            var cmd = this.GetVariableLengthResponseCommand()
+               .Finalize(SPWF04SxCommandIds.FSL);
+
+            this.EnqueueCommand(cmd);
+        }
+
+        public void CreateFile(string filename, byte[] data) => this.CreateFile(filename, data, 0, data != null ? data.Length : throw new ArgumentNullException(nameof(data)));
+        public void CreateFile(string filename, byte[] data, int offset, int count)
+        {
+            if (filename == null) throw new ArgumentNullException();
+            if (data == null) throw new ArgumentNullException(nameof(data));
+            if (offset < 0) throw new ArgumentOutOfRangeException();
+            if (count < 0) throw new ArgumentOutOfRangeException();
+            if (offset + count > data.Length) throw new ArgumentOutOfRangeException();
+
+            var cmd = this.GetCommand()
+                .AddParameter(filename)
+                .AddParameter(count.ToString())
+                .Finalize(SPWF04SxCommandIds.FSC, data, offset, count);
+
+            this.EnqueueCommand(cmd);
+
+            cmd.ReadBuffer();
+        }
+
+        public void DeleteFile(string filename)
+        {
+            if (filename == null) throw new ArgumentNullException();
+
+            var cmd = this.GetCommand()
+                .AddParameter(filename)
+                .Finalize(SPWF04SxCommandIds.FSD);
+
+            this.EnqueueCommand(cmd);
+
+            cmd.ReadBuffer();
+
+            this.FinishCommand(cmd);
+        }
+
+        public int ReadFile(string filename, byte[] buffer, int offset, int count)
+        {
+            var cmd = this.GetCommand()
+                   .AddParameter(filename)
+                   .AddParameter(offset.ToString())
+                   .AddParameter(count.ToString())
+                  .Finalize(SPWF04SxCommandIds.FSP);
+
+            this.EnqueueCommand(cmd);
+
+            var total = SPWF04SxInterface.ReadBuffer(cmd, buffer, offset, count);
+
+            this.FinishCommand(cmd);
+
+            return total;
+        }
+
+        public string SendPing(string host) => this.SendPing(host, 1, 56);
+        public string SendPing(string host, int count, int packetSize)
+        {
+            var cmd = this.GetCommand()
+                .AddParameter(count.ToString())
+                .AddParameter(packetSize.ToString())
+                .AddParameter(host)
+                .Finalize(SPWF04SxCommandIds.PING);
+
+            this.EnqueueCommand(cmd);
+
+            var str = cmd.ReadString();
+
+            cmd.ReadBuffer();
+            cmd.ReadBuffer();
+            cmd.ReadBuffer();
+
+            return str.Split(':')[1];
+        }
+
+        public int SendHttpGet(string host, string path) => this.SendHttpGet(host, path, 80, SPWF04SxConnectionSecurityType.None);
+        public int SendHttpGet(string host, string path, int port, SPWF04SxConnectionSecurityType connectionSecurity) => this.SendHttpGet(host, path, port, connectionSecurity, null, null);
+        public int SendHttpGet(string host, string path, int port, SPWF04SxConnectionSecurityType connectionSecurity, string inputFile, string outputFile)
+        {
+            var cmd = (outputFile != null ? this.GetCommand() : this.GetVariableLengthResponseCommand())
                 .AddParameter(host)
                 .AddParameter(path)
                 .AddParameter(port.ToString())
                 .AddParameter(connectionSecurity == SPWF04SxConnectionSecurityType.None ? "0" : "2")
                 .AddParameter(null)
                 .AddParameter(null)
-                .AddParameter(null)
-                .AddParameter(null)
+                .AddParameter(inputFile)
+                .AddParameter(outputFile)
                 .Finalize(SPWF04SxCommandIds.HTTPGET);
 
-            this.EnqueueCommand(this.activeHttpCommand);
+            this.EnqueueCommand(cmd);
 
-            var result = this.activeHttpCommand.ReadString();
+            var result = cmd.ReadString();
             if (connectionSecurity == SPWF04SxConnectionSecurityType.Tls && result == string.Empty)
             {
-                result = this.activeHttpCommand.ReadString();
+                result = cmd.ReadString();
 
                 if (result.IndexOf("Loading:") == 0)
-                    result = this.activeHttpCommand.ReadString();
+                    result = cmd.ReadString();
             }
 
             return result.Split(':') is var parts && parts[0] == "Http Server Status Code" ? int.Parse(parts[1]) : throw new Exception($"Request failed: {result}");
         }
 
-        public int SendHttpPost(string host, string path, int port, SPWF04SxConnectionSecurityType connectionSecurity)
+        public int SendHttpPost(string host, string path) => this.SendHttpPost(host, path, 80, SPWF04SxConnectionSecurityType.None);
+        public int SendHttpPost(string host, string path, int port, SPWF04SxConnectionSecurityType connectionSecurity) => this.SendHttpPost(host, path, port, connectionSecurity, null, null);
+        public int SendHttpPost(string host, string path, int port, SPWF04SxConnectionSecurityType connectionSecurity, string inputFile, string outputFile)
         {
-            if (this.activeHttpCommand != null) throw new InvalidOperationException();
-
-            this.activeHttpCommand = this.GetCommand()
+            var cmd = (inputFile != null ? this.GetCommand() : this.GetVariableLengthResponseCommand())
                 .AddParameter(host)
                 .AddParameter(path)
                 .AddParameter(port.ToString())
                 .AddParameter(connectionSecurity == SPWF04SxConnectionSecurityType.None ? "0" : "2")
                 .AddParameter(null)
                 .AddParameter(null)
-                .AddParameter(null)
-                .AddParameter(null)
+                .AddParameter(inputFile)
+                .AddParameter(outputFile)
                 .Finalize(SPWF04SxCommandIds.HTTPPOST);
 
-            this.EnqueueCommand(this.activeHttpCommand);
+            this.EnqueueCommand(cmd);
 
-            var result = this.activeHttpCommand.ReadString();
+            var result = cmd.ReadString();
             if (connectionSecurity == SPWF04SxConnectionSecurityType.Tls && result == string.Empty)
             {
-                result = this.activeHttpCommand.ReadString();
+                result = cmd.ReadString();
 
                 if (result.IndexOf("Loading:") == 0)
-                    result = this.activeHttpCommand.ReadString();
+                    result = cmd.ReadString();
             }
 
             return result.Split(':') is var parts && parts[0] == "Http Server Status Code" ? int.Parse(parts[1]) : throw new Exception($"Request failed: {result}");
         }
 
-        public int ReadHttpResponse(byte[] buffer, int offset, int count)
+        public int ReadResponseBody(byte[] buffer, int offset, int count)
         {
-            if (this.activeHttpCommand == null) throw new InvalidOperationException();
+            if (this.activeVariableLengthResponseCommand == null) throw new InvalidOperationException();
 
-            var len = this.activeHttpCommand.ReadBuffer(buffer, offset, count);
+            var len = this.activeVariableLengthResponseCommand.ReadBuffer(buffer, offset, count);
 
             if (len == 0)
             {
-                this.FinishCommand(this.activeHttpCommand);
+                this.FinishCommand(this.activeVariableLengthResponseCommand);
 
-                this.activeHttpCommand = null;
+                this.activeVariableLengthResponseCommand = null;
             }
 
             return len;
@@ -290,29 +485,54 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                 .AddParameter(port.ToString())
                 .AddParameter(null)
                 .AddParameter(commonName ?? (connectionType == SPWF04SxConnectionType.Tcp ? (connectionSecurity == SPWF04SxConnectionSecurityType.Tls ? "s" : "t") : "u"))
-
-               
                 .Finalize(SPWF04SxCommandIds.SOCKON);
 
-            
-
-
-
-
+            // Changed by RoSchmi
+            SocketErrorHappened = false;
             this.EnqueueCommand(cmd);
-
-            var a = cmd.ReadString();
-            var b = cmd.ReadString();
-
-            if (connectionSecurity == SPWF04SxConnectionSecurityType.Tls && b.IndexOf("Loading:") == 0)
+            Thread.Sleep(0);
+            string a = string.Empty;
+            string b = string.Empty;
+            if (!SocketErrorHappened)
             {
                 a = cmd.ReadString();
-                b = cmd.ReadString();
+                // Debug.WriteLine("1: Read a: " + a);
+                Thread.Sleep(0);
+                if (!SocketErrorHappened)
+                {
+                    b = cmd.ReadString();
+                    // Debug.WriteLine("1: Read b: " + b);
+                }
+                Thread.Sleep(0);
+                if (connectionSecurity == SPWF04SxConnectionSecurityType.Tls && b.IndexOf("Loading:") == 0)
+                {
+                    if (!SocketErrorHappened)
+                    {
+                        a = cmd.ReadString();
+                        // Debug.WriteLine("2: Read a: " + a);
+                    }
+                    Thread.Sleep(0);
+                    if (!SocketErrorHappened)
+                    {
+                        b = cmd.ReadString();
+                        // Debug.WriteLine("2: Read b: " + b);
+                    }
+                }
+                else
+                {
+                    // Debug.WriteLine("First read was not 'Loading:'");
+                }
             }
-
             this.FinishCommand(cmd);
 
-            return a.Split(':') is var result && result[0] == "On" ? int.Parse(result[2]) : throw new Exception("Request failed");
+            if (SocketErrorHappened)
+            {
+                Debug.WriteLine("Socket Error happened *****");
+            }
+
+            Debug.WriteLine("Socket:" + a + " " + b);
+            //return a.Split(':') is var result && result[0] == "On" ? int.Parse(result[2]) : throw new Exception("Request failed");
+            return a.Split(':') is var result && result[0] == "On" ? int.Parse(result[2]) : -1;
         }
 
         public void CloseSocket(int socket)
@@ -360,13 +580,7 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
             cmd.ReadBuffer();
 
-            var current = 0;
-            var total = 0;
-            do
-            {
-                current = cmd.ReadBuffer(buffer, offset + total, count - total);
-                total += current;
-            } while (current != 0);
+            var total = SPWF04SxInterface.ReadBuffer(cmd, buffer, offset, count);
 
             this.FinishCommand(cmd);
 
@@ -390,22 +604,12 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             return result[0] == "Query" ? int.Parse(result[1]) : throw new Exception("Request failed");
         }
 
-        public string ListSocket()
+        public void ListSockets()
         {
-            var cmd = this.GetCommand()
+            var cmd = this.GetVariableLengthResponseCommand()
                 .Finalize(SPWF04SxCommandIds.SOCKL);
 
             this.EnqueueCommand(cmd);
-
-            var str = string.Empty;
-            while (cmd.ReadString() is var s && s != string.Empty)
-                str += s + Environment.NewLine;
-
-            cmd.ReadBuffer();
-
-            this.FinishCommand(cmd);
-
-            return str;
         }
 
         public void EnableRadio()
@@ -438,31 +642,11 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         {
             this.DisableRadio();
 
+            this.SetConfigurationVariable("wifi_mode", "1");
+            this.SetConfigurationVariable("wifi_priv_mode", "2");
+            this.SetConfigurationVariable("wifi_wpa_psk_text", password);
+
             var cmd = this.GetCommand()
-                .AddParameter("wifi_mode")
-                .AddParameter("1")
-                .Finalize(SPWF04SxCommandIds.SCFG);
-            this.EnqueueCommand(cmd);
-            cmd.ReadBuffer();
-            this.FinishCommand(cmd);
-
-            cmd = this.GetCommand()
-                .AddParameter("wifi_priv_mode")
-                .AddParameter("2")
-                .Finalize(SPWF04SxCommandIds.SCFG);
-            this.EnqueueCommand(cmd);
-            cmd.ReadBuffer();
-            this.FinishCommand(cmd);
-
-            cmd = this.GetCommand()
-                .AddParameter("wifi_wpa_psk_text")
-                .AddParameter(password)
-                .Finalize(SPWF04SxCommandIds.SCFG);
-            this.EnqueueCommand(cmd);
-            cmd.ReadBuffer();
-            this.FinishCommand(cmd);
-
-            cmd = this.GetCommand()
                 .AddParameter(ssid)
                 .Finalize(SPWF04SxCommandIds.SSIDTXT);
             this.EnqueueCommand(cmd);
@@ -471,11 +655,21 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
             this.EnableRadio();
 
-            cmd = this.GetCommand()
-                .Finalize(SPWF04SxCommandIds.WCFG);
-            this.EnqueueCommand(cmd);
-            cmd.ReadBuffer();
-            this.FinishCommand(cmd);
+            this.SaveConfiguration();
+        }
+
+        private static int ReadBuffer(SPWF04SxCommand cmd, byte[] buffer, int offset, int count)
+        {
+            var current = 0;
+            var total = 0;
+
+            do
+            {
+                current = cmd.ReadBuffer(buffer, offset + total, count - total);
+                total += current;
+            } while (current != 0);
+
+            return total;
         }
 
         private void Process()
@@ -540,12 +734,11 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                         }
                         else if (type == 0x03)
                         {
-
                             // Changes by RoSchmi
                             if (this.activeCommand == null || !this.activeCommand.Sent)
                             {
-                                var dummy2 = 1;
-                                //throw new InvalidOperationException("Unexpected payload.");
+                                Debug.WriteLine("Unexpected payload: Indication = " + ind.ToString());
+                                throw new InvalidOperationException("Unexpected payload.");
                             }
 
                             //See https://github.com/ghi-electronics/TinyCLR-Drivers/issues/10
@@ -558,8 +751,102 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                             //        break;
                             //}
 
-                            this.activeCommand.ReadPayload(this.spi.Read, payloadLength);
-                            var dummy1 = 1;
+                            switch (ind)
+                            {
+
+                                case 0x00:
+                                case 0x03:
+                                case 0xFE:
+                                case 0xFF:
+                                    { }
+                                    break;
+
+
+                                case 0x2C:  // dec 44: wait for connection up
+                                case 0x41:  // dec 65: DNS Address Failure
+                                case 0x4A:  // dec 74: Failed to open socket
+                                case 0x4C:  // dec 79: Write failed
+                                    {
+                                        SocketErrorHappened = true;
+                                        pendingEvents.Enqueue(new SPWF04SxErrorReceivedEventArgs(ind, ""));
+                                        Debug.WriteLine("Indication: " + ind.ToString("X2") + " Socket Error " + " Pld = " + payloadLength.ToString());
+
+                                    }
+                                    break;
+
+                                default:
+                                    {
+                                        pendingEvents.Enqueue(new SPWF04SxErrorReceivedEventArgs(ind, ""));
+
+                                        //var str = Encoding.UTF8.GetString(windPayloadBuffer.Data, 0, payloadLength);
+                                        //var str = Encoding.UTF8.GetString(windPayloadBuffer.Data, 0, Math.Min(windPayloadBuffer.Data.Length, payloadLength));
+                                        //pendingEvents.Enqueue(new SPWF04SxErrorReceivedEventArgs(ind, str));
+                                        //Debug.WriteLine("AT-S.ERROR x " + "Indication: " + ind.ToString("X2") + " Pld = " + payloadLength.ToString());
+                                    }
+                                    break;
+
+
+
+                                    //    case 0x02:
+                                    //        {
+                                    //            // Seen, actually meaning not clear
+                                    //            Debug.WriteLine("Indication: " + ind.ToString("X2") + " PayLoad = " + payloadLength.ToString());
+                                    //        }
+                                    //        break;
+                                    //
+                                    //
+                                    //    case 0x04:
+                                    //       {
+                                    //            // Seen after bad formed configuration command
+                                    //            Debug.WriteLine("Indication: " + ind.ToString("X2") + " Wrong command format " + " Pld = " + payloadLength.ToString());                                       
+                                    //        }
+                                    //        break;
+                                    //
+                                    //    case 0x2C:  // dec 44: wait for connection up
+                                    //        {
+                                    //            SocketErrorHappened = true;
+                                    //            Debug.WriteLine("Indication: " + ind.ToString("X2") + " Wait for connection up " + " Pld = " + payloadLength.ToString());
+                                    //        }
+                                    //        break;
+                                    //    case 0x38:  // dec 56: Unable to delete file ?
+                                    //        {                                      
+                                    //            Debug.WriteLine("Ind: " + ind.ToString("X2") + " Unable to delete file" + " Pld = " + payloadLength.ToString());                                       
+                                    //        }
+                                    //        break;
+                                    //    case 0x41:  // dez 65: DNS Address Failure
+                                    //        {                                       
+                                    //            SocketErrorHappened = true;
+                                    //            Debug.WriteLine("Indication: " + ind.ToString("X2") + " DNS Address failed " + " Pld = " + payloadLength.ToString());
+                                    //        }
+                                    //        break;
+                                    //
+                                    //    case 0x4A:   // dec 74: Failed to open socket  
+                                    //        {
+                                    //            SocketErrorHappened = true;
+                                    //            Debug.WriteLine("Ind: " + ind.ToString("X2") + " Failed to open socket " + " Pld = " + payloadLength.ToString());                                       
+                                    //        }
+                                    //        break;
+                                    //    case 0x4C:   // dec 79: Write failed
+                                    //        {
+                                    //            SocketErrorHappened = true;
+                                    //            Debug.WriteLine("Ind: " + ind.ToString("X2") + " Write failed " + " Pld = " + payloadLength.ToString());                                       
+                                    //        }
+                                    //        break;
+                                    //    case 0x6F:   // dez 111 Request failed
+                                    //        {
+                                    //            Debug.WriteLine("Ind: " + ind.ToString("X2") + " Request failed " + " Pld = " + payloadLength.ToString());                                       
+                                    //        }
+                                    //        break;
+                            }
+                            // if clause added by RoSchmi
+                            if (this.activeCommand != null)
+                            {
+                                this.activeCommand.ReadPayload(this.spi.Read, payloadLength);
+                            }
+                            else
+                            {
+                                throw new NullReferenceException("Act. Cmd was null");
+                            }
                         }
                         else
                         {
@@ -581,6 +868,8 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
                 Thread.Sleep(0);
             }
+
+
         }
 
         private int GetInternalSocketId(int socket) => this.netifSockets.Contains(socket) ? (int)this.netifSockets[socket] : throw new ArgumentException();
@@ -728,9 +1017,9 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         public override NetworkInterfaceType NetworkInterfaceType => NetworkInterfaceType.Wireless80211;
 
         public override bool Supports(NetworkInterfaceComponent networkInterfaceComponent) => networkInterfaceComponent == NetworkInterfaceComponent.IPv4;
-     
+
     }
-    */
+
 }
 
 

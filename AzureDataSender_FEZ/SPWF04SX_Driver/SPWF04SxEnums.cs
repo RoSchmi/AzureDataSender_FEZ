@@ -1,5 +1,20 @@
-﻿namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
-{
+﻿namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx {
+    public enum SPWF04SxHashType
+    {
+        Sha1,
+        Sha224,
+        Sha256,
+        Md5,
+    }
+
+    public enum SPWF04SxVolume
+    {
+        ExternalMemory,
+        UserFlash,
+        Ram,
+        ApplicationFlash,
+    }
+
     public enum SPWF04SxConnectionSecurityType
     {
         None,
@@ -50,12 +65,12 @@
         PWM = 0x18,
         TIME = 0x11,
         RANDOM = 0x12,
-        FSM = 0x21,           // Added by RoSchmi
+        FSM = 0x21,
         FSU = 0x22,
         FSC = 0x23,
         FSD = 0x25,
         FSR = 0x26,
-        FSL = 0x27,   
+        FSL = 0x27,
         FSP = 0x28,
         HASH = 0x29,
         WPAECERT = 0x2A,

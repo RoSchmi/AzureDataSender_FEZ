@@ -7,6 +7,7 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 {
     public class FileEntity
     {
+        /*
         public string Name { get; private set; }
         public string Volume { get; private set; }
         public string Length { get; private set; }
@@ -19,5 +20,6 @@ namespace RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             this.Volume = volume;
             this.Length = length;
         }
+        */
     }
 }

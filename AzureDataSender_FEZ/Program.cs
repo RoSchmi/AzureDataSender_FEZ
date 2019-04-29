@@ -129,10 +129,16 @@ namespace AzureDataSender_FEZ
         private static readonly object LockProgram = new object();
      
         private static GpioPin OnOffSensor01;
-        
+
+        // RoSchmi: must be tested
+        //public static SPWF04SxInterface wifi;
+
+        public static SPWF04SxInterfaceExtension wifi;
+
+        //public static SPWF04SxInterface wifi;
         //private static SPWF04SxInterface wifi;
-        public static SPWF04SxInterfaceRoSchmi  wifi;
-       
+        //public static SPWF04SxInterfaceRoSchmi  wifi;
+
         private static WiFi_SPWF04S_Mgr wiFi_SPWF04S_Mgr;
 
         private static DateTime dateTimeNtpServerDelivery = DateTime.MinValue;
@@ -188,10 +194,14 @@ namespace AzureDataSender_FEZ
             
             var scont = SpiController.FromName(FEZ.SpiBus.WiFi);
             
-            var spi = scont.GetDevice(SPWF04SxInterfaceRoSchmi.GetConnectionSettings(SpiChipSelectType.Gpio, FEZ.GpioPin.WiFiChipSelect));
-                        
-            wifi = new SPWF04SxInterfaceRoSchmi(spi, irq, reset);
-            
+            //var spi = scont.GetDevice(SPWF04SxInterfaceRoSchmi.GetConnectionSettings(SpiChipSelectType.Gpio, FEZ.GpioPin.WiFiChipSelect));
+            var spi = scont.GetDevice(SPWF04SxInterface.GetConnectionSettings(SpiChipSelectType.Gpio, FEZ.GpioPin.WiFiChipSelect));
+
+            //wifi = new SPWF04SxInterfaceRoSchmi(spi, irq, reset);
+            //wifi = new SPWF04SxInterface(spi, irq, reset);
+            wifi = new SPWF04SxInterfaceExtension(spi, irq, reset);
+
+
             wiFi_SPWF04S_Mgr = new WiFi_SPWF04S_Mgr(wifi, wiFiSSID_1, wiFiKey_1);
             
             wiFi_SPWF04S_Mgr.PendingSocketData += WiFi_SPWF04S_Device_PendingSocketData;
@@ -201,7 +211,7 @@ namespace AzureDataSender_FEZ
             wiFi_SPWF04S_Mgr.WiFiNetworkLost += WiFi_SPWF04S_Device_WiFiNetworkLost;
 
             wiFi_SPWF04S_Mgr.Initialize();
-           
+                      
             myCloudStorageAccount = new CloudStorageAccount(storageAccountName, storageKey, useHttps: Azure_useHTTPS);
           
             waitForWiFiReady.WaitOne(10000, true);  // ******** Wait 15 sec to scan for wlan devices   ********************
