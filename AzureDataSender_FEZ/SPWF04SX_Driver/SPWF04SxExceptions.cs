@@ -10,7 +10,7 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
     public class SPWF04SxBufferOverflowException : SPWF04SxException
     {
         public SPWF04SxBufferOverflowException(string message) : base(message) { }
-    }
+    }   
 }
 
 

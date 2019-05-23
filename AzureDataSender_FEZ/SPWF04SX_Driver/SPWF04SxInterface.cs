@@ -30,6 +30,7 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         private Thread worker;
         private bool running;
         private int nextSocketId;
+
         private bool SocketErrorHappened;
 
         public event SPWF04SxIndicationReceivedEventHandler IndicationReceived;
@@ -239,6 +240,8 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
             cmd.ReadBuffer();
 
+            var dummy = 1;
+
             this.FinishCommand(cmd);
         }
 
@@ -366,7 +369,7 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
             this.FinishCommand(cmd);
         }
-
+      
         public int ReadFile(string filename, byte[] buffer, int offset, int count)
         {
             var cmd = this.GetCommand()
@@ -383,7 +386,8 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
 
             return total;
         }
-
+        
+        
         public string SendPing(string host) => this.SendPing(host, 1, 56);
         public string SendPing(string host, int count, int packetSize)
         {
@@ -478,6 +482,35 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             return len;
         }
 
+        /*
+        public int OpenSocket(string host, int port, SPWF04SxConnectionType connectionType, SPWF04SxConnectionSecurityType connectionSecurity, string commonName = null)
+        {
+            var cmd = this.GetCommand()
+                .AddParameter(host)
+                .AddParameter(port.ToString())
+                .AddParameter(null)
+                .AddParameter(commonName ?? (connectionType == SPWF04SxConnectionType.Tcp ? (connectionSecurity == SPWF04SxConnectionSecurityType.Tls ? "s" : "t") : "u"))
+                .Finalize(SPWF04SxCommandIds.SOCKON);
+         
+            this.EnqueueCommand(cmd);
+
+            var a = cmd.ReadString();
+            var b = cmd.ReadString();
+
+            if (connectionSecurity == SPWF04SxConnectionSecurityType.Tls && b.IndexOf("Loading:") == 0)
+            {
+                a = cmd.ReadString();
+                b = cmd.ReadString();
+            }
+
+            this.FinishCommand(cmd);
+
+            return a.Split(':') is var result && result[0] == "On" ? int.Parse(result[2]) : throw new Exception("Request failed");
+        }
+        */
+        
+
+        
         public int OpenSocket(string host, int port, SPWF04SxConnectionType connectionType, SPWF04SxConnectionSecurityType connectionSecurity, string commonName = null)
         {
             var cmd = this.GetCommand()
@@ -493,15 +526,13 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             Thread.Sleep(0);
             string a = string.Empty;
             string b = string.Empty;
-            if (!SocketErrorHappened)
+            if (!SocketErrorHappened)          
             {
-                a = cmd.ReadString();
-                // Debug.WriteLine("1: Read a: " + a);
-                Thread.Sleep(0);
-                if (!SocketErrorHappened)
+                a = cmd.ReadString();               
+                Thread.Sleep(0);                
+                if (!SocketErrorHappened)                   
                 {
-                    b = cmd.ReadString();
-                    // Debug.WriteLine("1: Read b: " + b);
+                    b = cmd.ReadString();                  
                 }
                 Thread.Sleep(0);
                 if (connectionSecurity == SPWF04SxConnectionSecurityType.Tls && b.IndexOf("Loading:") == 0)
@@ -509,31 +540,29 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                     if (!SocketErrorHappened)
                     {
                         a = cmd.ReadString();
-                        // Debug.WriteLine("2: Read a: " + a);
                     }
                     Thread.Sleep(0);
                     if (!SocketErrorHappened)
                     {
                         b = cmd.ReadString();
-                        // Debug.WriteLine("2: Read b: " + b);
                     }
-                }
-                else
-                {
-                    // Debug.WriteLine("First read was not 'Loading:'");
-                }
+                }              
             }
             this.FinishCommand(cmd);
 
             if (SocketErrorHappened)
             {
-                Debug.WriteLine("Socket Error happened *****");
-            }
+                Debug.WriteLine("Socket Error happened *****");                
+                throw new SPWF04SxSocketErrorException("Socket Error happened");
 
-            Debug.WriteLine("Socket:" + a + " " + b);
-            //return a.Split(':') is var result && result[0] == "On" ? int.Parse(result[2]) : throw new Exception("Request failed");
-            return a.Split(':') is var result && result[0] == "On" ? int.Parse(result[2]) : -1;
+            }
+            else
+            {
+                Debug.WriteLine("Socket:" + a + " " + b);
+                return a.Split(':') is var result && result[0] == "On" ? int.Parse(result[2]) : throw new Exception("Request failed");               
+            }
         }
+        
 
         public void CloseSocket(int socket)
         {
@@ -669,7 +698,7 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                 total += current;
             } while (current != 0);
 
-            return total;
+            return total;          
         }
 
         private void Process()
@@ -769,10 +798,25 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
                                     {
                                         SocketErrorHappened = true;
                                         pendingEvents.Enqueue(new SPWF04SxErrorReceivedEventArgs(ind, ""));
-                                        Debug.WriteLine("Indication: " + ind.ToString("X2") + " Socket Error " + " Pld = " + payloadLength.ToString());
+                                       // Debug.WriteLine("Indication: " + ind.ToString("X2") + " Socket Error " + " Pld = " + payloadLength.ToString());
 
                                     }
                                     break;
+
+                                case 0x04:
+                                      {
+                                          // Seen after bad formed configuration command
+                                           Debug.WriteLine("Indication: " + ind.ToString("X2") + " Wrong command format " + " Pld = " + payloadLength.ToString());                                       
+                                       }
+                                       break;
+
+                                case 0x05:
+                                    {
+                                        // Seen after bad formed configuration command
+                                        Debug.WriteLine("Indication: " + ind.ToString("X2") + " Wrong command format " + " Pld = " + payloadLength.ToString());
+                                    }
+                                    break;
+
 
                                 default:
                                     {
@@ -1017,9 +1061,7 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         public override NetworkInterfaceType NetworkInterfaceType => NetworkInterfaceType.Wireless80211;
 
         public override bool Supports(NetworkInterfaceComponent networkInterfaceComponent) => networkInterfaceComponent == NetworkInterfaceComponent.IPv4;
-
     }
-
 }
 
 

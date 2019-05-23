@@ -58,12 +58,12 @@ namespace RoSchmi.Net.Azure.Storage
 
         public static bool WiFiNetworkLost
         { get; set; }
-       
+
         #region "Debugging"
         private static DebugMode _debug = DebugMode.NoDebug;
         private static DebugLevel _debug_level = DebugLevel.DebugErrors;
 
-        
+
 
         /// <summary>
         /// Represents the debug mode.
@@ -166,7 +166,7 @@ namespace RoSchmi.Net.Azure.Storage
                 _fiddlerPort = pfiddlerPort;
             }
         }
-      
+
         //public static BasicHttpResponse SendWebRequest(SPWF04SxInterfaceRoSchmi spwf04sx, X509Certificate[] certificates, Uri url, string authHeader, string dateHeader, string versionHeader, byte[] payload = null, int contentLength = 0, string httpVerb = "GET", bool expect100Continue = false, string acceptType = "application/json;odata=minimalmetadata", Hashtable additionalHeaders = null)
         public static BasicHttpResponse SendWebRequest(SPWF04SxInterface spwf04sx, X509Certificate[] certificates, Uri url, string authHeader, string dateHeader, string versionHeader, byte[] payload = null, int contentLength = 0, string httpVerb = "GET", bool expect100Continue = false, string acceptType = "application/json;odata=minimalmetadata", Hashtable additionalHeaders = null)
         {
@@ -182,7 +182,7 @@ namespace RoSchmi.Net.Azure.Storage
                 HttpWebRequest request = null;
                 string SPWF04SxRequest = null;
                 try
-                {                   
+                {
                     if (wifi != null)
                     {
                         #region Region wifi != null  --> use SPWF04SA
@@ -200,23 +200,25 @@ namespace RoSchmi.Net.Azure.Storage
                         string protocol = "https";
 
                         // Changed by RoSchmi
-                        if (httpVerb == "GET")
+
+                        if ((httpVerb == "POST") && (certificates != null))
+                        {
+                            wifi.SetTlsServerRootCertificate(caCerts[0].GetRawCertData());
+                            wifi.ForceSocketsTls = true;
+                            protocol = "https";
+                        }
+                        else                             // httpVerb == "GET"
                         {
                             wifi.ClearTlsServerRootCertificate();
                             wifi.ForceSocketsTls = false;
                             protocol = "http";
                         }
-                        else   // httpVerb = POST
-                        {                           
-                            wifi.SetTlsServerRootCertificate(caCerts[0].GetRawCertData());
-                            wifi.ForceSocketsTls = true;
-                            protocol = "https";
-                        }
 
                         int port = protocol == "https" ? 443 : 80;
                         SPWF04SxConnectionSecurityType securityType = protocol == "https" ? SPWF04SxConnectionSecurityType.Tls : SPWF04SxConnectionSecurityType.None;
+                        string commonName = (protocol == "https") ? "*.table.core.windows.net" : null;
 
-                        
+
                         #region HttpGET Request outcommented
                         /*
                         if (httpVerb == "GET")
@@ -335,7 +337,7 @@ namespace RoSchmi.Net.Azure.Storage
                         #endregion
 
                         #region Wait 2 seconds for recovery when Network lost
-                        int timeCtr = 0;                       
+                        int timeCtr = 0;
                         while (WiFiNetworkLost && (timeCtr < 20))   // Wait 2 sec for WifiNetWorkLost, if not there --> return
                         {
                             if (timeCtr > 0)
@@ -356,11 +358,11 @@ namespace RoSchmi.Net.Azure.Storage
                         timeCtr = 0;
                         int loopLimit = 15;     // max 15 retries
                         long totalMemory = 0;
-                    
+
                         do
-                        {                           
+                        {
                             totalMemory = GC.GetTotalMemory(true);
-                            
+
                             #region try 1.5 second repeatedly to open socket (15 times)
                             id = -1;
                             int socketTimeCtr = 0;
@@ -369,7 +371,7 @@ namespace RoSchmi.Net.Azure.Storage
                                 // Debug.WriteLine("Going to open socket");                               
                                 totalMemory = GC.GetTotalMemory(true);
 
-                                string[] sockets = getSockets();
+                                string[] sockets = GetSockets();
 
                                 while (sockets.Length > 1)      // If unexpected sockets are there, read and discard content and close
                                 {
@@ -386,20 +388,35 @@ namespace RoSchmi.Net.Azure.Storage
                                             if (avail > 0)
                                             {
                                                 first_1 = false;
-                                                read_1 = wifi.ReadSocket(id, buffer, 0, Math.Min(avail, buffer.Length));                           
+                                                read_1 = wifi.ReadSocket(id, buffer, 0, Math.Min(avail, buffer.Length));
                                             }
                                             Thread.Sleep(100);
                                             tiCtr++;
                                         }
                                         wifi.CloseSocket(int.Parse(sockets[0].Substring(6, 1)));
                                     }
-                                    sockets = getSockets();                                                                
+                                    sockets = GetSockets();
                                 }
-                                
+
                                 Watchdog.Reset();
 
-                                id = wifi.OpenSocket(url.Host, port, SPWF04SxConnectionType.Tcp, securityType);
-                                                             
+                                // Changed by RoSchmi
+
+                                try
+                                {
+                                    // id = wifi.OpenSocket(url.Host, port, SPWF04SxConnectionType.Tcp, securityType, commonName);
+                                    id = wifi.OpenSocket(url.Host, port, SPWF04SxConnectionType.Tcp, securityType);
+
+                                    //id = wifi.OpenSocket("www.google.de", port, SPWF04SxConnectionType.Tcp, securityType);
+                                }
+                                catch (SPWF04SxSocketErrorException e)
+                                {
+                                    id = -1;
+                                }
+                                catch (Exception ex)
+                                {
+                                    string mess = ex.Message;
+                                }
                                 if (socketTimeCtr > 0)
                                 {
                                     Debug.WriteLine("Failed to open socket one time");
@@ -410,20 +427,14 @@ namespace RoSchmi.Net.Azure.Storage
 
                             if (id == -1)
                             {
-                                Debug.WriteLine("Finally failed to open socket");                                
+                                Debug.WriteLine("Finally failed to open socket");
                                 return new BasicHttpResponse() { ETag = null, Body = "", StatusCode = HttpStatusCode.Ambiguous };
                             }
                             #endregion
 
-                            // Debug.WriteLine("Succeeded to open socket on try: " + socketTimeCtr.ToString());
-
                             totalMemory = GC.GetTotalMemory(true);
-
-                            // string[] socks = wifi.ListSocket().Split('\n');
-                            // string[] sock =  socks[0].Split(':');
-
                             Watchdog.Reset();
-                            SocketDataPending = false;                            
+                            SocketDataPending = false;
                             wifi.WriteSocket(id, requestBinary);
 
                             if (httpVerb == "POST")
@@ -434,7 +445,7 @@ namespace RoSchmi.Net.Azure.Storage
                             {
                                 Thread.Sleep(100);
                             }
-              
+
                             timeCtr++;
                             // Debug.WriteLine("Write Try: " + timeCtr.ToString());
                             if (!SocketDataPending && timeCtr < loopLimit)
@@ -455,7 +466,6 @@ namespace RoSchmi.Net.Azure.Storage
 
                         totalMemory = GC.GetTotalMemory(true);
 
-                        //while ((Program.wifi.QuerySocket(id) is var avail && avail > 0) || first || total < 120)
                         while (((wifi.QuerySocket(id) is var avail && avail > 0) || first || total < 120) && (timeCtr < 30))
                         {
                             if (avail > 0)
@@ -617,7 +627,7 @@ namespace RoSchmi.Net.Azure.Storage
                     }
                     #endregion
                     else
-                    {                     
+                    {
                         #region Region wifi = null  --> alternativly use SPWF04SA via NET/TinyCLR (doesn't work)
                         /*
                         request = PrepareRequest(url, authHeader, dateHeader, versionHeader, payload, contentLength, httpVerb, expect100Continue, acceptType, additionalHeaders);
@@ -785,7 +795,7 @@ namespace RoSchmi.Net.Azure.Storage
             }
             catch (NullReferenceException ex12)
             {
-                throw new NullReferenceException("NullExcept 12 at: " +  ex12.ToString());
+                throw new NullReferenceException("NullExcept 12 at: " + ex12.ToString());
             }
             catch (Exception ex13)
             {
@@ -793,27 +803,29 @@ namespace RoSchmi.Net.Azure.Storage
                 {
                     _Print_Debug("Exception in HttpWebRequest: " + ex13.Message);
                 }
-                return new BasicHttpResponse() { ETag = null, Body = responseBody, StatusCode = responseStatusCode };                       
-            }             
+                return new BasicHttpResponse() { ETag = null, Body = responseBody, StatusCode = responseStatusCode };
+            }
         }
 
-       
+
         
+
+
         private static void PrintLine(byte[] buffer, int start, int count)
         {
             Debug.WriteLine(Encoding.UTF8.GetString(buffer, start, count));
         }
 
-        private static string[] getSockets()
+        
+        private static string GetResponsebodyAsString(int bufSize)
         {
-            byte[] buffer = new byte[50];
-            wifi.ListSockets();
+            if (bufSize < 1) throw new ArgumentException();
+            byte[] buffer = new byte[bufSize];
             int sockRead = buffer.Length;
             int sockOffset = 0;
             int sockTotal = 0;
             byte[] sockLastBuf = new byte[0];
             byte[] sockTotalBuf = new byte[0];
-
             while (sockRead > 0)
             {
                 sockRead = wifi.ReadResponseBody(buffer, 0, buffer.Length);
@@ -823,10 +835,18 @@ namespace RoSchmi.Net.Azure.Storage
                 Array.Copy(sockLastBuf, 0, sockTotalBuf, 0, sockOffset);
                 Array.Copy(buffer, 0, sockTotalBuf, sockOffset, sockRead);
             }
-            string resultString = Encoding.UTF8.GetString(sockTotalBuf);
+            return Encoding.UTF8.GetString(sockTotalBuf);
+        }
+        
 
+        
+        private static string[] GetSockets()
+        {           
+            wifi.ListSockets();          
+            string resultString = GetResponsebodyAsString(50);
             return resultString.Split('\n');
         }
+        
 
         private static string PrepareSPWF04SxRequest(Uri url, string authHeader, string dateHeader, string versionHeader, byte[] fileBytes, int contentLength, string httpVerb, bool isSocketRequest, bool expect100Continue = false, string acceptType = "application/json;odata=minimalmetadata", Hashtable additionalHeaders = null)
         {
@@ -837,7 +857,7 @@ namespace RoSchmi.Net.Azure.Storage
             }
             else
             {
-                //requ = new StringBuilder(httpVerb + " " + url.AbsolutePath + " HTTP/1.1");
+              //requ = new StringBuilder(httpVerb + " " + url.AbsolutePath + " HTTP/1.1");
                 requ = new StringBuilder(httpVerb + " " + url.AbsoluteUri + " HTTP/1.1");
             }
             requ.Append("\r\nUser-Agent: " + "Http-Client" +
