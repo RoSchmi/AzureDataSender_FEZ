@@ -32,6 +32,8 @@ namespace AzureDataSender_FEZ
         [System.SerializableAttribute()]
         internal enum BinaryResources : short
         {
+            Google_Trust_Services___GlobalSign_Root_CA_R2 = -12929,
+            DigiCert_Baltimore_Root = -10335,
             BaltimoreCyberTrustRoot = -10127,
         }
     }

@@ -1,5 +1,5 @@
 ﻿// Copyright RoSchmi 2019 License Apache 2.0
-// Version 1.0.1 06.03.2019
+// Version 1.0.2 23.05.2019
 // App to write sensor data to Azure Storage Table service
 // For TinyCLR Board FEZ with SPWF04Sx Wifi module
 
@@ -10,22 +10,15 @@
 #region Using directives
 using System;
 using System.Collections;
-using System.Text;
-using System.Resources;
 using System.Threading;
 using System.Diagnostics;
 using System.Net;
-using System.Net.NetworkInterface;
-using System.Net.Sockets;
-using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using GHIElectronics.TinyCLR.Devices.Gpio;
 using GHIElectronics.TinyCLR.Devices.Spi;
 using GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx;
 using GHIElectronics.TinyCLR.Pins;
 using GHIElectronics.TinyCLR.Devices.Adc;
-using GHIElectronics.TinyCLR.Storage.Streams;
-using RoSchmi.Net;
 using RoSchmi.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx;
 using RoSchmi.Net.Azure.Storage;
 using RoSchmi.DayLightSavingTime;
@@ -47,55 +40,53 @@ namespace AzureDataSender_FEZ
         private static AzureStorageHelper.DebugMode _debug = AzureStorageHelper.DebugMode.StandardDebug;
         private static AzureStorageHelper.DebugLevel _debug_level = AzureStorageHelper.DebugLevel.DebugAll;
              
-        private static int timeZoneOffset = 60;      // Berlin offest in minutes of your timezone to Greenwich Mean Time (GMT) 
+        //private static int timeZoneOffset = 60;      // Berlin offest in minutes of your timezone to Greenwich Mean Time (GMT)
+        private static int timeZoneOffset = 120;      // Berlin offest in minutes of your timezone to Greenwich Mean Time (GMT)
 
-        private static bool workWithWatchdog = true;    // with watchdog activated OutOfMemory exceptions are thrown, test if watchdog works for you
+        private static bool workWithWatchdog = false;    // with watchdog activated occasionally OutOfMemory exceptions are thrown, test if watchdog works for you
 
         // Set the name of the table for analog values (name must be conform to special rules: see Azure)
         private static string analogTableName = "AnalogTestValues";
-
+       
         private static string analogTablePartPrefix = "Y2_";     // Your choice (name must be conform to special rules: see Azure)
         private static bool augmentPartitionKey = true;          // If true, the actual year is added as suffix to the Tablenames
 
         // Set the name of the table for On/Off values (name must be conform to special rules: see Azure)
-        private static string OnOffSensor01TableName = "OnOffValues01";                
+        //private static string OnOffSensor01TableName = "OnOffValues01";
+        private static string OnOffSensor01TableName = "OnOffValues02";
 
         static string onOffTablePartPrefix = "Y3_";             // Your choice (name must be conform to special rules: see Azure)
 
         // Set intervals (in seconds, invalidateInterval in minutes)
         static int readInterval = 4;                     // in this interval (seconds) analog sensors are read
 
-        //static int writeToCloudInterval = 600;        // in this interval (seconds) the analog data are stored to the cloud (600 = 10 min is recommended)
-        static int writeToCloudInterval = 45;      
-
+        static int writeToCloudInterval = 45;        // in this interval (seconds) the analog data are stored to the cloud (600 = 10 min is recommended)
+           
         static int invalidateIntervalMinutes = 15;      // if analog values ar not actualized in this interval, they are set to invalid (999.9)
 
         // Set your WiFi Credentials here or store them in the Resources
         static string wiFiSSID_1 = ResourcesSecret.GetString(ResourcesSecret.StringResources.SSID_1);
-        // static string wiFiSSID_1 = "myWiFiSSID";
-        static string wiFiKey_1 = ResourcesSecret.GetString(ResourcesSecret.StringResources.Key_1);
-        // static string wiFiKey_1 = "mysupersecretWiFiKey";
+        //static string wiFiSSID_1 = "VirtualWiFi";
 
+        static string wiFiKey_1 = ResourcesSecret.GetString(ResourcesSecret.StringResources.Key_1);
+        //static string wiFiKey_1 = "MySecretWiFiKey";
+        
         // Set your Azure Storage Account Credentials here or store them in the Resources      
-        static string storageAccountName = ResourcesSecret.GetString(ResourcesSecret.StringResources.AzureAccountName);
+        static string storageAccountName = ResourcesSecret.GetString(ResourcesSecret.StringResources.AzureAccountName);      
         //static string storageAccount = "your Accountname";
 
-        static string storageKey = ResourcesSecret.GetString(ResourcesSecret.StringResources.AzureAccountKey);
+        static string storageKey = ResourcesSecret.GetString(ResourcesSecret.StringResources.AzureAccountKey);        
         //static string storageKey = "your key";
 
-        private static bool Azure_useHTTPS = true;
-        //private static bool Azure_useHTTPS = false;
+        //private static bool Azure_useHTTPS = true;
+        private static bool Azure_useHTTPS = false;
 
         //****************  End of Settings to be changed by user   ********************************* 
 
 
-        // public static byte[] caAzure = Resources.GetBytes(Resources.BinaryResources.BaltimoreCyberTrustRoot);
-        private static X509Certificate[] caCerts = new X509Certificate[] { new X509Certificate(Resources.GetBytes(Resources.BinaryResources.BaltimoreCyberTrustRoot)) };
+        private static X509Certificate[] caCerts = Azure_useHTTPS ? new X509Certificate[] { new X509Certificate(Resources.GetBytes(Resources.BinaryResources.BaltimoreCyberTrustRoot)) } : null;
 
-        
-
-        //static string wiFiSSID_2 = ResourcesSecret.GetString(ResourcesSecret.StringResources.SSID_2);
-        //static string wiFiKey_2 = ResourcesSecret.GetString(ResourcesSecret.StringResources.Key_2);
+        //private static X509Certificate[] caCerts = new X509Certificate[] { new X509Certificate(Resources.GetBytes(Resources.BinaryResources.Google_Trust_Services___GlobalSign_Root_CA_R2)) };
 
         //DayLightSavingTimeSettings  //not used in this App
         // Europe       
@@ -113,7 +104,7 @@ namespace AzureDataSender_FEZ
         // private static bool attachFiddler = false;
         // private static int fiddlerPort = 77;
 
-        private static int AnalogCloudTableYear = 1900;
+        private static int AnalogCloudTableYear = 1900;   // preset with year in the past
 
         private static TableClient table;
 
@@ -134,10 +125,6 @@ namespace AzureDataSender_FEZ
         //public static SPWF04SxInterface wifi;
 
         public static SPWF04SxInterfaceExtension wifi;
-
-        //public static SPWF04SxInterface wifi;
-        //private static SPWF04SxInterface wifi;
-        //public static SPWF04SxInterfaceRoSchmi  wifi;
 
         private static WiFi_SPWF04S_Mgr wiFi_SPWF04S_Mgr;
 
@@ -193,14 +180,10 @@ namespace AzureDataSender_FEZ
             var irq = cont.OpenPin(FEZ.GpioPin.WiFiInterrupt);
             
             var scont = SpiController.FromName(FEZ.SpiBus.WiFi);
-            
-            //var spi = scont.GetDevice(SPWF04SxInterfaceRoSchmi.GetConnectionSettings(SpiChipSelectType.Gpio, FEZ.GpioPin.WiFiChipSelect));
+                       
             var spi = scont.GetDevice(SPWF04SxInterface.GetConnectionSettings(SpiChipSelectType.Gpio, FEZ.GpioPin.WiFiChipSelect));
-
-            //wifi = new SPWF04SxInterfaceRoSchmi(spi, irq, reset);
-            //wifi = new SPWF04SxInterface(spi, irq, reset);
+           
             wifi = new SPWF04SxInterfaceExtension(spi, irq, reset);
-
 
             wiFi_SPWF04S_Mgr = new WiFi_SPWF04S_Mgr(wifi, wiFiSSID_1, wiFiKey_1);
             
@@ -238,15 +221,15 @@ namespace AzureDataSender_FEZ
                 GHIElectronics.TinyCLR.Native.Power.Reset(true);      // Reset Board if no time over internet     
             }
 
-            if (DateTime.Now < new DateTime(2019,01,01))                  // Actualize TinyCLR Datetime if not up to date
-            {               
-                DateTime nowDate = new DateTime(int.Parse("20" + theTime.Substring(5, 2) ), int.Parse(theTime.Substring(8, 2)), int.Parse(theTime.Substring(11, 2)), int.Parse(theTime.Substring(21, 2)), int.Parse(theTime.Substring(24, 2)), int.Parse(theTime.Substring(27, 2)));               
+            if (DateTime.Now < new DateTime(2019,01,01))                  // Actualize TinyCLR Datetime if not up to date         
+            {
+                string[] splitDateTime = theTime.Replace("Time:", "#").Split(new char[] { '#' });
+                DateTime nowDate = new DateTime(int.Parse("20" + splitDateTime[0].Substring(5, 2)), int.Parse(splitDateTime[0].Substring(8, 2)), int.Parse(splitDateTime[0].Substring(11, 2)), int.Parse(splitDateTime[1].Substring(0, 2)), int.Parse(splitDateTime[1].Substring(3, 2)), int.Parse(splitDateTime[1].Substring(6, 2)));
                 SystemTime.SetTime(nowDate, timeZoneOffset);
             }
-            
-            wifi.SetConfiguration("ramdisk_memsize", "18");        // Reserve more Ram on SPWF04Sx  (not needed in this App)
 
-            // Tests with changing ntp-refresh time, didn't get it working
+            // Tests with changing ntp-refresh time of SPWF04Sx module, didn't get it working
+            // https://community.st.com/s/question/0D50X0000APZKXBSQ5/how-to-control-timing-of-spwf04sa-ntpserverdelivery-events
             // wifi.SetConfiguration("ip_ntp_refresh", "30");         // set refresh time
             // string readBack = wifi.GetConfiguration("ip_ntp_refresh");
             // readBack = wifi.GetConfiguration("console_wind_off_high");
@@ -257,28 +240,50 @@ namespace AzureDataSender_FEZ
             wifi.ClearTlsServerRootCertificate();
                   
             #region Region: List of additional commands for file handling  *** only for demonstration  ***
-            // do not delete
+            // do not delete, can be useful in future 
             /*
             theTime = wifi.GetTime();
 
-            wifi.MountMemoryVolume("2");
+            wifi.MountVolume(SPWF04SxVolume.Ram);
 
-            string theFiles = wifi.GetDiskContent();
-         
             wifi.SetConfiguration("ramdisk_memsize", "18");
            
-            wifi.CreateRamFile("mytestfile", Encoding.UTF8.GetBytes("Das hat geklappt, ganz wunderbar. ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLMNOPQRSTUVWXYZ"));
+            wifi.DeleteFile("mytestfile");
 
-            FileEntity fileEntity = wifi.GetFileProperties("mytestfile");   // Can be used as 'FileExists' equivalent 
 
-            byte[] theData = wifi.GetFileDataBinary("mytestfile");
+            wifi.CreateFile("mytestfile", Encoding.UTF8.GetBytes("Das hat geklappt, ganz wunderbar. ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLMNOPQRSTUVWXYZ.ABCDEFGHIJKLMNOPQRSTUVWXYZ"));
 
-            string fileContent = wifi.PrintFile("mytestfile");
+            // Get the list of files in SPWF04Sx directory: First wifi.GetFileListing, then ReadResponseBody
+            wifi.GetFileListing();
 
-            wifi.DeleteRamFile("mytestfile");
+            StringBuilder stringBuilder = new StringBuilder("");
+            byte[] readBuf = new byte[50];
+            int len = readBuf.Length;
 
-            theFiles = wifi.GetDiskContent();
-            */
+            while (len > 0)
+            {
+                len = readBuf.Length;
+                len = wifi.ReadResponseBody(readBuf, 0, readBuf.Length);
+                // make here what you want to do with the byte Array
+                stringBuilder.Append(Encoding.UTF8.GetString(readBuf, 0, len));                
+            }
+            string fileList = stringBuilder.ToString();
+
+            // ********************** This is an alternative way to get the fileListing
+            // wifi.GetFileListing();
+            // string fileListing = GetResponsebodyAsString(50);
+            // ***********************
+
+            // Now as we have the FileListing, we can get the properties of a special file
+
+            FileEntity fileEntity = wifi.GetFileProperties(fileList, "mytestfile");   // Can be used as 'FileExists' equivalent 
+
+            // Now as we know the length of the file, we can read the content
+            byte[] fileContent = wifi.GetFileDataBinary("mytestfile", int.Parse(fileEntity.Length));
+           
+            //Debug.WriteLine(Encoding.UTF8.GetString(fileContent));
+                     
+            */        
             #endregion
 
             getSensorDataTimer = new System.Threading.Timer(new TimerCallback(getSensorDataTimer_tick), null, readInterval * 1000, readInterval * 1000);
@@ -633,11 +638,8 @@ namespace AzureDataSender_FEZ
 
         /*
         private static int GetDlstOffset(DateTime pDateTime)
-
         {
-
             return DayLightSavingTime.DayLightTimeOffset(dstStart, dstEnd, dstOffset, pDateTime, true);
-
         }
         */
 
@@ -647,12 +649,7 @@ namespace AzureDataSender_FEZ
             //RoSchmi changed
             return 0;
             //return  DayLightSavingTime.DayLightTimeOffset(dstStart, dstEnd, dstOffset, pDateTime, true);
-
-        }
-
-
-
-        
+        }       
         #endregion
 
         #region private method insertTableEntity
@@ -713,9 +710,36 @@ namespace AzureDataSender_FEZ
             // var theRowKey = entityHashtable["RowKey"];
             return resultCode;
         }
-        
+
         #endregion
 
+        /*
+        // don't delete, is in some cases the better way to read FileListing
+        private static string GetResponsebodyAsString(int bufSize)
+        {
+            if (bufSize < 1) throw new ArgumentException();
+            byte[] buffer = new byte[bufSize];
+            int sockRead = buffer.Length;
+            int sockOffset = 0;
+            int sockTotal = 0;
+            byte[] sockLastBuf = new byte[0];
+            byte[] sockTotalBuf = new byte[0];
+            while (sockRead > 0)
+            {               
+                sockRead = wifi.ReadResponseBody(buffer, 0, buffer.Length);
+
+                sockTotal += sockRead;                               
+                sockOffset = sockLastBuf.Length;
+                sockTotalBuf = new byte[sockOffset + sockRead];
+                Array.Copy(sockLastBuf, 0, sockTotalBuf, 0, sockOffset);
+                Array.Copy(buffer, 0, sockTotalBuf, sockOffset, sockRead);
+                
+                string intString = Encoding.UTF8.GetString(sockTotalBuf);
+                sockLastBuf = sockTotalBuf;
+            }
+            return Encoding.UTF8.GetString(sockTotalBuf);
+        }
+        */
     }
 }
 
