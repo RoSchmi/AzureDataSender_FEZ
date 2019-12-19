@@ -513,12 +513,15 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
         
         public int OpenSocket(string host, int port, SPWF04SxConnectionType connectionType, SPWF04SxConnectionSecurityType connectionSecurity, string commonName = null)
         {
+            //string parameter = commonName ?? (connectionType == SPWF04SxConnectionType.Tcp ? (connectionSecurity == SPWF04SxConnectionSecurityType.Tls ? "s" : "t") : "u");
             var cmd = this.GetCommand()
                 .AddParameter(host)
                 .AddParameter(port.ToString())
                 .AddParameter(null)
                 .AddParameter(commonName ?? (connectionType == SPWF04SxConnectionType.Tcp ? (connectionSecurity == SPWF04SxConnectionSecurityType.Tls ? "s" : "t") : "u"))
                 .Finalize(SPWF04SxCommandIds.SOCKON);
+
+
 
             // Changed by RoSchmi
             SocketErrorHappened = false;

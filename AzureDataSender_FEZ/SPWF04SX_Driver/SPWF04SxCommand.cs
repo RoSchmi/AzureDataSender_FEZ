@@ -85,6 +85,11 @@ namespace GHIElectronics.TinyCLR.Drivers.STMicroelectronics.SPWF04Sx
             this.writePayloadLength = rawDataCount;
             this.writeHeaderLength = idx;
 
+            // Added by RoSchmi
+            //byte[] cmdString = new byte[this.writePayloadLength - this.writePayloadOffset];
+            //Array.Copy(this.writePayload, 0, cmdString, 0, cmdString.Length);
+            //Debug.WriteLine("Command is: " + Encoding.UTF8.GetString(cmdString));
+
             return this;
         }
 

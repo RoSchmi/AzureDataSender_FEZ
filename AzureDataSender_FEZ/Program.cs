@@ -228,13 +228,16 @@ namespace AzureDataSender_FEZ
                 SystemTime.SetTime(nowDate, timeZoneOffset);
             }
 
-            // Tests with changing ntp-refresh time of SPWF04Sx module, didn't get it working
-            // https://community.st.com/s/question/0D50X0000APZKXBSQ5/how-to-control-timing-of-spwf04sa-ntpserverdelivery-events
-            // wifi.SetConfiguration("ip_ntp_refresh", "30");         // set refresh time
-            // string readBack = wifi.GetConfiguration("ip_ntp_refresh");
-            // readBack = wifi.GetConfiguration("console_wind_off_high");
-            // wifi.SetConfiguration("ip_ntp_startup", "0");        // switch off ntp client
-            // wifi.SaveConfiguration();
+        // Tests with changing ntp-refresh time of SPWF04Sx module, didn't get it working
+        // https://community.st.com/s/question/0D50X0000APZKXBSQ5/how-to-control-timing-of-spwf04sa-ntpserverdelivery-events
+        // wifi.SetConfiguration("ip_ntp_refresh", "30");         // set refresh time
+        // string readBack = wifi.GetConfiguration("ip_ntp_refresh");
+        // readBack = wifi.GetConfiguration("console_wind_off_high");
+        // wifi.SetConfiguration("ip_ntp_startup", "0");        // switch off ntp client
+        // wifi.SaveConfiguration();
+
+        //about certificates
+        //https://community.st.com/s/question/0D50X00009XkWWsSAN/spwf04sx-mqttconn-problem-with-azure
 
 
             wifi.ClearTlsServerRootCertificate();

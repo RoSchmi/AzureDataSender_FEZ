@@ -5,7 +5,8 @@ App for [GHI Electronics FEZ](https://ghielectronics.com/products/fez) with SPWF
 
 The FEZ Mainboard can be programmed in C# on top of GHI-Electronics TinyCLR firmware (an OS with a subset of .NET like the still perhaps better known .NET Micro Framework NETMF)
 
-Sensor data are transfered to Azure using TLS 1.2 secured transmission (https). Reading back stored Data from Azure actually works only over unsecure transmission (http).
+Sensor data were transfered to Azure using TLS 1.2 secured transmission (https). After Microsoft changed their Certificates in May 2019 transmisson over https was not longer possible.
+Reading back stored Data from Azure works only over unsecure transmission (http).
 
 Data stored (in special format) in Azure Storage Tables can then be visulized with the iOS App Store App: ['Charts4Azure'](https://itunes.apple.com/us/app/charts4azure/id1442910354?mt=8)
 

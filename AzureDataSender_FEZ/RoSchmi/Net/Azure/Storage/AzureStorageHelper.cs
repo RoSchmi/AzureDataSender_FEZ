@@ -203,6 +203,10 @@ namespace RoSchmi.Net.Azure.Storage
 
                         if ((httpVerb == "POST") && (certificates != null))
                         {
+                            // this line can be deleted
+                            byte[] certData = caCerts[0].GetRawCertData();
+
+
                             wifi.SetTlsServerRootCertificate(caCerts[0].GetRawCertData());
                             wifi.ForceSocketsTls = true;
                             protocol = "https";
@@ -402,10 +406,26 @@ namespace RoSchmi.Net.Azure.Storage
 
                                 // Changed by RoSchmi
 
+                                //AT + S.SCFG = wifi_eap_skip_datechecks,1
+
+                                //wifi.SetConfigurationVariable("wifi_eap_skip_datechecks", "1");
+
+                                // var skp = wifi.GetConfigurationVariable("wifi_eap_skip_datechecks");
+
+                               // wifi.SetConfigurationVariable("nv_wifi_macaddr", "00:21:03:80:35:c5"); // new byte[6] { 0x00, 0x21, 0x03, 0x80, 0x35, 0xC5 });
+
+                                var mac = wifi.GetConfigurationVariable("nv_wifi_macaddr");
+
+                                //var mac = wifi.GetPhysicalAddress();
+
+                               // wifi.ForceSocketsTlsCommonName = "*.table.core.windows.net";
+
                                 try
                                 {
-                                    // id = wifi.OpenSocket(url.Host, port, SPWF04SxConnectionType.Tcp, securityType, commonName);
-                                    id = wifi.OpenSocket(url.Host, port, SPWF04SxConnectionType.Tcp, securityType);
+                                  //id = wifi.OpenSocket(url.Host, port, SPWF04SxConnectionType.Tcp, securityType, commonName);
+
+
+                                  id = wifi.OpenSocket(url.Host, port, SPWF04SxConnectionType.Tcp, securityType);
 
                                     //id = wifi.OpenSocket("www.google.de", port, SPWF04SxConnectionType.Tcp, securityType);
                                 }
